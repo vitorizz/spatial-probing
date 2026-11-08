@@ -16,3 +16,10 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - What'sUp Controlled B: 408 images, 102 per class, 102 object pairs (groups) with exactly 4 photos each, 18 object names. Filenames agree with the first caption in the annotation JSON for every item.
   - Local Mac (M1 Pro, macOS 14.7, torch 2.15): MPS crashes in conv3d (vision patch embedding), so `default_device()` returns cuda or cpu, never mps. CPU fp16 takes about 34 s per What'sUp item (about 4 h for all 408). Use Colab for full runs.
   - Hidden states: `score_options` keeps `hidden_states[l][0, -1, :]` for l = 0..36. In HF Qwen2 the last entry (l = 36) is after the final RMSNorm.
+- 2026-11-08 (Person A): What'sUp baseline on Colab (T4, base model, `python -m src.extract_hidden`).
+  - Accuracy 0.500 overall, lateral 0.995 (203/204), depth 0.005 (1/204). Far below the 85% depth stop rule, so the project premise holds.
+  - Determinism: 10/10 identical predictions on a rerun, max score difference 0.0. Free-generation agreement with option scoring: 20/20 (1.0).
+  - Speed: 1.88 items/s on the T4 (408 items in 3 min 36 s); free generation 1.68 items/s. Model load about 30 s after a ~50 s download.
+  - Outputs on Drive under `spatial_probe/results/`: `preds/base_whatsup.csv`, `preds/base_whatsup_gen.csv`, `metrics/base_whatsup.json`, `hidden/base_whatsup_last.npy` (408 x 37 x 2048 float16) + `hidden/base_whatsup_index.csv`.
+  - Colab setup: install requirements without torch/torchvision (`grep -v -E '^torch' requirements.txt > /tmp/req.txt && pip install -r /tmp/req.txt`). A plain `pip install -r requirements.txt` replaced Colab's CUDA torch with a CPU-only build ("Torch not compiled with CUDA enabled"); only "Disconnect and delete runtime" undoes it.
+  - The first Colab attempt stopped silently at 91/408 with no traceback (cause unknown, RAM was fine). Rerunning with output to a log finished cleanly with exit code 0.
