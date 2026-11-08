@@ -1,0 +1,7 @@
+annotations_url: http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+
+pairs:
+  min_area_frac: 0.02
+  max_pairs_per_image: 3
+  lateral_min_gap: 0.10
+  lateral_max_overlap: 0.30   # fraction of the narrower box's width
