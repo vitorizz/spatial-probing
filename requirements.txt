@@ -1,5 +1,6 @@
 # TODO: pin exact versions once the Colab setup works
 torch>=2.1
+torchvision>=0.16
 transformers>=4.49
 accelerate>=0.34
 peft>=0.13

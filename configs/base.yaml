@@ -14,7 +14,7 @@ prompts:
 
 options:
   fourway: [left, right, front, behind]
-  yesno: [yes, no]
+  yesno: ["yes", "no"]   # quoted: bare yes/no parse as booleans in YAML
 
 paths:
   drive_root: /content/drive/MyDrive/spatial_probe
