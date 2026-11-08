@@ -131,11 +131,26 @@ def plot_curves(curves: pd.DataFrame, path: Path, title: str,
     return path
 
 
-def summarize(curves: pd.DataFrame, out: Path, name: str) -> dict:
+def constant_layers(H: np.ndarray) -> list[int]:
+    """Layers whose vector is identical for every item. Layer 0 (the input embedding of
+    the last prompt token, the same token for every photo) is always one. A probe there
+    can only predict its training folds' majority class, so its shuffled control falls
+    below chance by construction; such layers are excluded from the acceptance check."""
+    return [l for l in range(H.shape[1]) if float(np.ptp(H[:, l].astype(np.float32), axis=0).max()) == 0.0]
+
+
+def summarize(curves: pd.DataFrame, out: Path, name: str, const: list[int]) -> dict:
     main = curves[curves.C == MAIN_C]
-    gaps = {t: float((main[main.task == t].shuffled_mean - CHANCE[t]).abs().max()) for t in TASKS}
-    worst = {t: float((main[main.task == t].shuffled_max - CHANCE[t]).abs().max()) for t in TASKS}
+    varying = main[~main.layer.isin(const)]
+    gaps = {t: float((varying[varying.task == t].shuffled_mean - CHANCE[t]).abs().max()) for t in TASKS}
+    worst = {t: float((varying[varying.task == t].shuffled_max - CHANCE[t]).abs().max()) for t in TASKS}
+    gaps_all = {t: float((main[main.task == t].shuffled_mean - CHANCE[t]).abs().max()) for t in TASKS}
     L = int(curves.layer.max())
+    noisy = {t: sorted(int(l) for l in main[(main.task == t) & (main.std_acc > 0.10)].layer) for t in TASKS}
+
+    def first_at(t: str, thr: float = 0.95) -> int | None:
+        d = main[(main.task == t) & (main.mean_acc >= thr)]
+        return int(d.layer.min()) if len(d) else None
 
     reg = {}
     base = curves[(curves.task == "depth") & (curves.C == MAIN_C)].set_index("layer").mean_acc
@@ -153,11 +168,15 @@ def summarize(curves: pd.DataFrame, out: Path, name: str) -> dict:
         "best_layer": {t: int(main[main.task == t].set_index("layer").mean_acc.idxmax()) for t in TASKS},
         "best_acc": {t: float(main[main.task == t].mean_acc.max()) for t in TASKS},
         "final_layer_acc": {t: float(main[(main.task == t) & (main.layer == L)].mean_acc.iloc[0]) for t in TASKS},
+        "first_layer_acc_ge_0.95": {t: first_at(t) for t in TASKS},
         "max_fold_std": {t: float(main[main.task == t].std_acc.max()) for t in TASKS},
+        "layers_fold_std_gt_0.10": noisy,
         "shuffled_control": {
+            "constant_input_layers_excluded": const,
             "max_abs_gap_from_chance_mean_of_5": gaps,
             "max_abs_gap_from_chance_single_perm": worst,
             "pass_within_5_points": bool(all(g <= 0.05 for g in gaps.values())),
+            "max_abs_gap_including_constant_layers": gaps_all,
         },
         "regularization_check_depth": reg,
     }
@@ -179,6 +198,8 @@ def main() -> None:
     ap.add_argument("--model-name", default="base")
     ap.add_argument("--out", default=None, help="results root (default: results_dir())")
     ap.add_argument("--n-jobs", type=int, default=-1)
+    ap.add_argument("--summary-only", action="store_true",
+                    help="reuse the existing curves CSV; only redo the summary and figure")
     args = ap.parse_args()
 
     out = Path(args.out) if args.out else results_dir()
@@ -187,30 +208,40 @@ def main() -> None:
     print(f"hidden states {H.shape} {H.dtype}; labels {index.label.value_counts().to_dict()}; "
           f"{index.group.nunique()} groups")
 
-    t0 = time.time()
-    curves = run_probes(H, index, n_jobs=args.n_jobs)
-    runtime = time.time() - t0
-
     probes = out / "probes"
     probes.mkdir(parents=True, exist_ok=True)
     curves_path = probes / f"{name}_probe_curves.csv"
-    curves.to_csv(curves_path, index=False)
+    t0 = time.time()
+    if args.summary_only:
+        curves = pd.read_csv(curves_path)
+    else:
+        curves = run_probes(H, index, n_jobs=args.n_jobs)
+        curves.to_csv(curves_path, index=False)
+    runtime = time.time() - t0
     fig_path = plot_curves(curves, out / "figures" / f"{name}_probe_curves.png",
                            f"Probe accuracy by layer: {name} model, What'sUp Controlled B")
-    summary = summarize(curves, out, name)
-    summary["runtime_s"] = round(runtime, 1)
+    summary = summarize(curves, out, name, constant_layers(H))
+    if not args.summary_only:
+        summary["runtime_s"] = round(runtime, 1)
     write_json(summary, probes / f"{name}_probe_summary.json")
     if name == "base":  # the spec's file names
         shutil.copyfile(curves_path, probes / "probe_curves.csv")
         shutil.copyfile(fig_path, out / "figures" / "probe_curves.png")
 
     print(json.dumps({k: summary[k] for k in
-                      ("best_layer", "best_acc", "final_layer_acc", "shuffled_control", "probe_vs_model")
+                      ("best_layer", "best_acc", "final_layer_acc", "first_layer_acc_ge_0.95",
+                       "shuffled_control", "layers_fold_std_gt_0.10", "probe_vs_model")
                       if k in summary}, indent=2))
-    if not summary["shuffled_control"]["pass_within_5_points"]:
+    sc = summary["shuffled_control"]
+    if sc["constant_input_layers_excluded"]:
+        print(f"layers {sc['constant_input_layers_excluded']} have identical inputs for every item "
+              "and are left out of the shuffled-control check (see constant_layers()).")
+    if not sc["pass_within_5_points"]:
         print("WARNING: a shuffled control is more than 5 points from chance; check for leakage.")
+    else:
+        print("shuffled controls: PASS (within 5 points of chance at every non-constant layer)")
     if max(summary["max_fold_std"].values()) > 0.10:
-        print("NOTE: some fold std > 10 points (spec risk 'probe curves too noisy').")
+        print("NOTE: some fold std > 10 points (spec risk 'probe curves too noisy'); see layers_fold_std_gt_0.10.")
     print(f"wrote {curves_path} and {fig_path} ({runtime:.0f} s)")
 
 
