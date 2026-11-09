@@ -55,6 +55,10 @@ and the exclusion-check artifact. Evaluation loaders expose `coco_image_id`.
 B's reference exclusion builder covers both VSR variants across their available
 splits and all three original COCO POPE variants. Confirm the final exclusion
 set against the benchmark sources and IDs actually used for evaluation.
+`src.data.prepare` records question IDs, `coco_image_ids`, source URLs, and file
+hashes in `data/prepared/` (or the selected data root). Those manifests describe
+the evaluation selections actually prepared; they do not replace B's broader
+training exclusion builder.
 
 ## From B: adapter and provenance
 

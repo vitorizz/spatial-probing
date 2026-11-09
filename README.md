@@ -19,7 +19,7 @@ synthetic fixtures; their scores are not project results.
 
 | Component | Available here | Remaining dependency |
 | --- | --- | --- |
-| VSR/POPE loaders | Local-file loading and validation; checked against official annotations | Local data for actual evaluation |
+| VSR/POPE data | Download command, local-file loading and validation; loaders checked against official annotations | Run preparation for the selected benchmark data |
 | Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | A's model implementation; A's What'sUp loader for that dataset |
 | Hand-check gallery | Offline images, boxes, evidence, decisions, JSON export/restore | B's fixed 200-question sample and team assignments |
 | Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
@@ -86,8 +86,18 @@ will be documented after integration. Available commands follow below.
 
 ## Prepare evaluation data
 
-Loaders and evaluation use local files; they do not download datasets. A
-convenient layout is:
+Fetch the official annotations and only the images they reference:
+
+```bash
+python -m src.data.prepare --dataset vsr --root data
+python -m src.data.prepare --dataset pope --root data
+```
+
+Defaults match evaluation: VSR `zeroshot`/`test`, POPE `random`. Use `--variant`
+for other variants and `--split` for another VSR split. `--root` defaults to the
+shared `data_dir()` when omitted. No model or Torch installation is needed for
+preparation. This command writes the layout expected by the local-file loaders
+and evaluator, which themselves do not download data:
 
 ```text
 data/
@@ -103,6 +113,17 @@ data/
 Image filenames above illustrate the layout, not actual required IDs. Keep the
 exact filenames referenced by the annotations.
 
+`--annotations-only` skips images; `--limit 8` prepares images for the first eight
+questions for use with evaluation's matching smoke-run option. Rerunning the
+command validates cached files and resumes at missing files. New files are
+published only after validating complete downloads and decoding images.
+
+Preparation writes URLs, annotation/image hashes, question IDs, and COCO image
+IDs under `data/prepared/`. Full, limited, and annotation-only selections have
+separate manifests. Subsequent runs of the same selection reject changed cached
+annotations/images rather than silently replacing the frozen benchmark. A
+cached file that fails validation must be inspected and restored before reuse.
+
 Get VSR's `train.jsonl`, `dev.jsonl`, or `test.jsonl` from the official
 [zeroshot](https://huggingface.co/datasets/cambridgeltl/vsr_zeroshot/tree/main)
 or [random](https://huggingface.co/datasets/cambridgeltl/vsr_random/tree/main)
@@ -110,8 +131,9 @@ dataset. VSR's `image_link` identifies its images in COCO `train2017` or
 `val2017`. Get original POPE files from
 [output/coco](https://github.com/RUCAIBox/POPE/tree/main/output/coco); they refer to
 COCO `val2014`. These `.json` files contain one object per line. POPEv2 is outside
-the loader's scope. Follow the datasets' instructions to obtain COCO images
-separately; the annotation files do not contain image bytes.
+the loader's scope. The preparation command uses VSR's `image_link` and the
+original COCO POPE filenames to locate images. Annotation files themselves do
+not contain image bytes. Existing local files can also be used directly.
 
 Validate each selected dataset before a full model run:
 
@@ -253,6 +275,7 @@ src/common.py        config I/O, paths, seeding, JSON helpers
 src/model_utils.py   shared model API (currently stubs)
 src/data/vsr.py      VSR loader and validation command
 src/data/pope.py     original COCO POPE loader and validation command
+src/data/prepare.py  cached annotation/image downloads and preparation manifests
 src/eval.py          baseline/adapter inference and saved artifacts
 src/stats.py         metric summaries, paired comparisons, result tables
 src/handcheck.py     offline training-question review gallery builder
