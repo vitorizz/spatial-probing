@@ -19,7 +19,7 @@ from typing import Any
 from src.common import REPO_ROOT, load_config, results_dir, set_seed, write_json
 from src.data.pope import load_pope
 from src.data.vsr import load_vsr
-from src.stats import summarize_predictions
+from src.stats import question_manifest_hash, summarize_predictions
 
 
 def prepare_items(
@@ -136,13 +136,7 @@ def evaluate(
             if field in item and item[field] != expected:
                 raise ValueError(f"{item.get('id')}: {field} does not match the requested evaluation")
     prepared, options = prepare_items(dataset, selected, cfg)
-    # Exclude machine-specific paths and model identity from the comparison hash.
-    manifest = [
-        {key: item[key] for key in ("id", "group", "label", "question")}
-        | {"image": Path(item["image_path"]).name}
-        for item in prepared
-    ]
-    manifest_hash = hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
+    manifest_hash = question_manifest_hash(prepared)
     annotations_hash = hashlib.sha256(Path(annotations).read_bytes()).hexdigest() if annotations else None
 
     from PIL import Image

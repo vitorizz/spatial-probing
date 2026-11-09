@@ -18,6 +18,7 @@ from PIL import Image
 from src.common import load_config
 from src.eval import evaluate, main, prepare_items
 from src.model_utils import ScoreResult
+from src.stats import compare_runs
 
 
 class EvaluationTests(unittest.TestCase):
@@ -193,6 +194,16 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(metrics["model"], "adapted")
         self.assertEqual(metrics["f1"], 1.0)
         self.load_model.assert_called_once_with(self.cfg, adapter="adapter")
+
+    def test_saved_evaluation_artifacts_feed_paired_comparison(self):
+        self.scorer.return_value = ScoreResult({"yes": 0.0, "no": 1.0}, "no", None)
+        self.run_vsr(annotations=self.annotations)
+        self.scorer.return_value = ScoreResult({"yes": 1.0, "no": 0.0}, "yes", None)
+        self.run_vsr(annotations=self.annotations, adapter="adapter", model_name="targeted")
+        result = compare_runs(self.out / "metrics/base_vsr_zeroshot_test.json",
+                              self.out / "metrics/targeted_vsr_zeroshot_test.json", n_bootstrap=32)
+        self.assertEqual(result["metrics"]["accuracy"]["delta"], 1.0)
+        self.assertIsNone(result["metrics"]["accuracy"]["ci_low"])
 
 
 if __name__ == "__main__":

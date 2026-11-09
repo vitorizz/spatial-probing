@@ -26,7 +26,7 @@ src/model_utils.py  shared model interface (load, prompt, score)
 src/data/vsr.py     VSR annotation loader and validation command
 src/data/pope.py    original COCO POPE annotation loader and validation command
 src/eval.py         baseline/adapter evaluation and prediction artifacts
-src/stats.py        benchmark metric summaries
+src/stats.py        metric summaries, paired comparisons, results tables
 src/handcheck.py    offline training-question review gallery
 handcheck/         gallery assets, input contract, review instructions
 ```
@@ -142,3 +142,48 @@ The file works offline without a server. See [handcheck/README.md](handcheck/REA
 for the input schema, review checklist, and save/restore workflow. The gallery
 tool is ready independently of the final sample; no real questions have been
 hand-checked yet.
+
+## Baseline / adapter comparison
+
+After evaluating the base model and adapter with `src.eval`, compare their
+saved artifacts without loading a model:
+
+```bash
+python -m src.stats \
+  --baseline results/metrics/base_vsr_zeroshot_test.json \
+  --adapter results/metrics/targeted_vsr_zeroshot_test.json \
+  --out results/comparisons/targeted
+```
+
+Each of `--baseline` and `--adapter` accepts multiple metric JSON paths. Supply
+all desired datasets/variants to create one table; files are matched by
+dataset/variant/split, regardless of list order. Each side must contain exactly
+one run for every benchmark being compared. Keep the usual `<results>/metrics/`
+and `<results>/preds/` layout together when copying artifacts between machines.
+Older extraction-only artifacts need conversion or reevaluation with `src.eval`.
+
+The command writes `comparison.json`, `comparison.csv`, and `comparison.md` in
+the output folder. JSON/CSV store rates on the 0–1 scale. The Markdown table shows
+percentages and adapter-minus-baseline changes in **percentage points**, with
+95% confidence intervals by default. POPE precision/recall/F1 and yes ratio are
+included; What'sUp includes lateral/depth accuracy. VSR reports overall accuracy.
+
+Comparison verifies the CSV and question-manifest checksums, then matches every
+question ID. Labels, groups, prompts, image filenames, source annotation hashes,
+answer-option order, model configuration, and evaluation seed must agree. It
+recomputes metrics from predictions and never silently drops unmatched questions.
+The baseline must have no adapter, and the second run must identify its adapter.
+Recorded environment differences are retained in JSON for review.
+
+Confidence intervals use 2,000 paired group-bootstrap draws. What’sUp resamples
+whole object pairs; VSR/POPE resample whole images. Each draw uses the same groups
+for both models and recomputes metrics from the sampled question counts, including
+nonlinear POPE metrics. This preserves related questions and accounts for unequal
+group sizes. Intervals reflect evaluation-group sampling, not variation across
+separate training runs. Metrics with fewer than two contributing groups, or fewer
+than two valid resamples, have no interval. The JSON records valid resample counts.
+
+`--bootstrap`, `--confidence`, and `--seed` override the resampling settings; the
+seed defaults to the baseline's evaluation seed. Limited evaluations require
+`--allow-limited` and are visibly labeled in the table. Existing report files
+require a new output folder or `--overwrite`.
