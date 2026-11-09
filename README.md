@@ -27,6 +27,8 @@ src/data/vsr.py     VSR annotation loader and validation command
 src/data/pope.py    original COCO POPE annotation loader and validation command
 src/eval.py         baseline/adapter evaluation and prediction artifacts
 src/stats.py        benchmark metric summaries
+src/handcheck.py    offline training-question review gallery
+handcheck/         gallery assets, input contract, review instructions
 ```
 
 Run code from the repo root as modules: `python -m src.<name>`.
@@ -125,3 +127,18 @@ automatic resume is not implemented yet.
 The offline suite uses tiny real images and a fake model API, so it needs only
 NumPy, PyYAML, and Pillow from the existing requirements. It does not measure
 model accuracy. Run it with `python -m unittest discover -s tests -v`.
+
+## Training-data hand-check
+
+Once Person B provides the fixed review sample and images:
+
+```bash
+python -m src.handcheck --input data/coco_spatial/handcheck_sample.jsonl
+```
+
+Open `handcheck/gallery.html` in a browser to inspect images, optional boxes and
+label evidence, record accept/reject/unsure decisions, and export review JSON.
+The file works offline without a server. See [handcheck/README.md](handcheck/README.md)
+for the input schema, review checklist, and save/restore workflow. The gallery
+tool is ready independently of the final sample; no real questions have been
+hand-checked yet.

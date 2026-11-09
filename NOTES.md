@@ -13,3 +13,8 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - `src.eval` uses only the declared model interface. Real inference remains dependent on Person A's model implementation; What'sUp also uses their loader and full-dataset `check` function. No teammate branches were merged.
   - Baseline/adapter outputs share a question-manifest hash when questions and prompts match. Annotation and CSV hashes are also saved. Limited runs have separate filenames. Paired confidence intervals and comparison tables are left for a later change.
   - Offline evaluation tests use a fake model API and tiny Pillow images. NumPy, PyYAML, and Pillow are installed in the project `.venv`; all were already declared requirements. No new dependencies.
+- 2026-11-09 (Person C): hand-check gallery tooling.
+  - Self-contained HTML embeds image previews and optional original-coordinate boxes; review JSON can be exported/restored offline. Source images are unchanged.
+  - Review sessions are bound to question text, labels, original image bytes, boxes, and evidence. The gallery can be built now; the actual 200-question sample and our assigned review IDs still depend on B/team coordination.
+  - Input `a`/`b` name/box fields match B's current candidate-pair reference branch, but final training-question records may need an adapter. No teammate code was merged and no new packages were added.
+  - Verified with 33 Python tests and 5 JavaScript checks. A synthetic Firefox preview also exercised decisions, correction clearing, JSON export, and restore; no actual training questions have been reviewed.
