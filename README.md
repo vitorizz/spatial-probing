@@ -1,152 +1,202 @@
 # spatial-probe
 
-Probing and layer-targeted LoRA for spatial relations in Qwen2.5-VL-3B-Instruct.
+Study spatial relations in **Qwen2.5-VL-3B-Instruct**: measure its answers, probe
+which language-model layers encode spatial information, then evaluate whether
+LoRA applied to selected layers improves its answers. The four spatial answers
+are `left`, `right`, `front`, and `behind`.
 
-> Skeleton. Person C finalizes this file (what it does, how to run each step, current results).
+| Dataset | Task | Reported metrics |
+| --- | --- | --- |
+| What'sUp Controlled B | Four-way spatial relation | Overall, lateral, depth, and per-class accuracy |
+| VSR | Decide whether a spatial statement is true | Accuracy, per-class and per-relation accuracy |
+| Original COCO POPE | Answer object-presence questions | Accuracy, precision, recall, F1, predicted-yes ratio |
 
-## Setup
+## Current status
 
-```bash
-pip install -r requirements.txt   # on Colab, keep the preinstalled torch
-huggingface-cli login            # optional: avoids download rate limits
-```
+This branch contains Person C's evaluation, review, and reporting tools. Full
+model inference has **not** been run on this branch. Tests use a fake model and
+synthetic fixtures; their scores are not project results.
 
-On Colab, mount Drive first; outputs go to `/content/drive/MyDrive/spatial_probe/`.
-Locally, outputs go under the repo root.
+| Component | Available here | Remaining dependency |
+| --- | --- | --- |
+| VSR/POPE loaders | Local-file loading and validation; checked against official annotations | Local data for actual evaluation |
+| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | A's model implementation; A's What'sUp loader for that dataset |
+| Hand-check gallery | Offline images, boxes, evidence, decisions, JSON export/restore | B's fixed 200-question sample and team assignments |
+| Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
+| Model loading and scoring | Shared signatures in `src/model_utils.py` | A's implementation; current functions raise `NotImplementedError` |
+| Probing, layer selection, COCO training data, LoRA | Awaiting integration | A/B modules and verified commands |
 
-Shared constants (model id, image pixel limits, prompt templates, seed) live in
-`configs/base.yaml`. Load them with `src.common.load_config()`; do not redefine them.
+Teammate branches have been used as references and have not been merged. Their
+interfaces and artifacts may still change. See [integration handoffs](docs/INTEGRATION.md)
+for the assumptions used by these tools.
 
-## Repo layout
+## Setup and offline checks
 
-```
-configs/base.yaml   shared constants
-src/common.py       paths, seeding, config I/O
-src/model_utils.py  shared model interface (load, prompt, score)
-src/data/vsr.py     VSR annotation loader and validation command
-src/data/pope.py    original COCO POPE annotation loader and validation command
-src/eval.py         baseline/adapter evaluation and prediction artifacts
-src/stats.py        metric summaries, paired comparisons, results tables
-src/handcheck.py    offline training-question review gallery
-handcheck/         gallery assets, input contract, review instructions
-```
-
-Run code from the repo root as modules: `python -m src.<name>`.
-
-## Evaluation data
-
-The loaders use local annotation and image files; they do not download data or
-load the model. These commands need only Python's standard library. From the
-repo root, use the project venv:
+Run from the repo root using the project venv. If it does not exist yet, create
+it with `python3 -m venv .venv`, then activate it:
 
 ```bash
 source .venv/bin/activate
+```
+
+The offline Python suite needs only these packages, already declared in
+`requirements.txt`:
+
+```bash
+python -m pip install numpy pyyaml pillow
+python -m unittest discover -s tests -v
+```
+
+Optional JavaScript development checks use Node's built-in test runner, without
+npm packages:
+
+```bash
+node tests/test_handcheck.js
+```
+
+For model execution, install the full declared requirements in the execution
+environment with `python -m pip install -r requirements.txt`. The local venv has
+been checked for the offline workflow; the full model runtime and exact version
+pins remain to be confirmed during integration. See [NOTES.md](NOTES.md) for
+observed dataset and implementation details.
+
+Run modules as `python -m src.<name>`. Shared model ID, pixel limits, prompts,
+answer options, and seed live in `configs/base.yaml`; load them through
+`src.common.load_config()` rather than redefining them. `--config` on the
+evaluator merges YAML overrides over that shared base.
+
+## Project workflow
+
+1. **Prepare evaluation data.** Freeze the selected variants, splits, annotation
+   files, and question IDs. Exclude their COCO image IDs from training data.
+2. **Evaluate the base model** on What'sUp, VSR, and the desired POPE variants.
+   Retain predictions and run metadata for paired comparisons.
+3. **Probe and select layers (A).** Extract hidden states, train probes, and
+   freeze the selected layers before inspecting fine-tuning results.
+4. **Generate and review training questions (B + everyone).** B supplies the
+   fixed sample and evidence; everyone reviews their assigned IDs. Resolve label
+   issues before finalizing the training dataset.
+5. **Train targeted LoRA (B).** Retain the adapter, base-model identity, training
+   configuration, selected-layer artifact, and exclusion-check results.
+6. **Evaluate the adapter and compare (C).** Use the same questions and prompts
+   as the baseline, generate the before/after table, and report measured results.
+
+Steps 3–5 need teammate modules that are not yet on this branch. Their commands
+will be documented after integration. Available commands follow below.
+
+## Prepare evaluation data
+
+Loaders and evaluation use local files; they do not download datasets. A
+convenient layout is:
+
+```text
+data/
+  vsr/zeroshot/test.jsonl
+  pope/coco_pope_random.json
+  pope/coco_pope_popular.json
+  pope/coco_pope_adversarial.json
+  coco/train2017/000000000001.jpg
+  coco/val2017/000000000002.jpg
+  coco/val2014/COCO_val2014_000000000003.jpg
+```
+
+Image filenames above illustrate the layout, not actual required IDs. Keep the
+exact filenames referenced by the annotations.
+
+Get VSR's `train.jsonl`, `dev.jsonl`, or `test.jsonl` from the official
+[zeroshot](https://huggingface.co/datasets/cambridgeltl/vsr_zeroshot/tree/main)
+or [random](https://huggingface.co/datasets/cambridgeltl/vsr_random/tree/main)
+dataset. VSR's `image_link` identifies its images in COCO `train2017` or
+`val2017`. Get original POPE files from
+[output/coco](https://github.com/RUCAIBox/POPE/tree/main/output/coco); they refer to
+COCO `val2014`. These `.json` files contain one object per line. POPEv2 is outside
+the loader's scope. Follow the datasets' instructions to obtain COCO images
+separately; the annotation files do not contain image bytes.
+
+Validate each selected dataset before a full model run:
+
+```bash
 python -m src.data.vsr --annotations data/vsr/zeroshot/test.jsonl \
   --image-root data/coco --variant zeroshot --split test
 python -m src.data.pope --annotations data/pope/coco_pope_random.json \
   --image-root data/coco --variant random
 ```
 
-Obtain VSR's `train.jsonl`, `dev.jsonl`, or `test.jsonl` from the official
-[zeroshot](https://huggingface.co/datasets/cambridgeltl/vsr_zeroshot/tree/main)
-or [random](https://huggingface.co/datasets/cambridgeltl/vsr_random/tree/main)
-dataset. The variant and split flags describe the supplied file; the loader
-cannot infer them from its contents. VSR images come from both COCO `train2017/`
-and `val2017/`, as specified by each record's `image_link`.
+`--image-root` accepts a root of COCO split folders or a flat folder containing
+the exact filenames. Validation checks file existence; images are decoded during
+evaluation. Missing files are errors; questions are never silently skipped.
+`--no-check-images` validates annotations before images are present. Variant and
+split flags describe the supplied file; loaders cannot infer these choices.
 
-Use the original POPE files from
-[output/coco](https://github.com/RUCAIBox/POPE/tree/main/output/coco), with
-`--variant random`, `popular`, or `adversarial` as appropriate. These `.json`
-files contain one JSON object per line and refer to COCO `val2014/` images.
-POPEv2 is outside this loader's scope.
+## Evaluate the base model and adapter
 
-`--image-root` accepts either a folder containing the exact image filenames or
-a root containing the COCO split folders above. Missing image files are errors;
-the loaders do not skip questions or substitute filenames from other COCO years.
-`--no-check-images` allows annotation-only validation before images are present.
-Image checks establish file existence; decoding happens during model evaluation.
-
-Both loaders return dictionaries with `id`, `dataset`, `variant`, `image_path`,
-`coco_image_id`, `group`, and a string `label` (`yes` or `no`). VSR also retains
-`split`, `caption`, and `relation`; POPE retains `question`. Prompts are applied
-later by evaluation using the shared config. Repeated images share a group but
-retain separate question IDs. VSR IDs use the record index, so keep the exact
-annotation file fixed across baseline and adapter runs.
-
-Run the offline data checks with `python -m unittest discover -s tests -v`.
-
-## Evaluation
-
-`src.eval` uses the shared model interface for option scoring, without extracting
-hidden states. Full model execution requires Person A's `model_utils.py`
-implementation to be integrated. What'sUp also requires their `src/data/whatsup.py`
-loader and its `check` function. The evaluator does not download datasets.
-
-With the venv active and the declared requirements installed:
+After A's model implementation is integrated, run datasets separately:
 
 ```bash
 python -m src.eval --dataset vsr --variant zeroshot --split test \
   --annotations data/vsr/zeroshot/test.jsonl --image-root data/coco
-python -m src.eval --dataset pope --variant adversarial \
-  --annotations data/pope/coco_pope_adversarial.json --image-root data/coco
+python -m src.eval --dataset pope --variant random \
+  --annotations data/pope/coco_pope_random.json --image-root data/coco
 python -m src.eval --dataset whatsup --data-root data
 ```
 
-VSR defaults to `zeroshot`/`test`; POPE defaults to `random`. Run each desired
-variant separately. Add `--adapter runs/targeted/adapter --model-name targeted`
-to evaluate an adapter on the same questions and prompts. `--config` merges a
-YAML override over the shared base configuration.
+What'sUp also requires A's loader and data files. Full What'sUp runs invoke that
+loader's dataset checks. Evaluation uses the shared option-scoring interface
+without requesting hidden states.
 
-Add `--limit 8` for a smoke run. Only selected image paths are required for these
-runs, and output filenames include `_limit8` to keep them separate from full
-evaluations. Full What'sUp runs invoke Person A's dataset checks first.
+VSR defaults to `zeroshot`/`test`; POPE defaults to `random`. To evaluate another
+variant, change both its annotation path and flag. VSR also supports `random`;
+POPE supports `popular` and `adversarial`. Settle benchmark selection before
+interpreting adapter results.
 
-Results go under `results_dir()` (local `results/` or Drive), or an explicit
-`--out` folder. For example, the VSR baseline writes:
+For an adapter, repeat the same command with:
+
+```text
+--adapter runs/targeted/adapter --model-name targeted
+```
+
+Add `--limit 8` for a smoke run. Only selected image paths are required; output
+filenames include `_limit8` to separate these from full evaluations. Existing
+outputs require another model name or explicit `--overwrite`. Automatic resume
+is not implemented: interruption before scoring finishes produces no final files.
+
+Outputs use `src.common.results_dir()`: local `results/`, or
+`/content/drive/MyDrive/spatial_probe/results/` when the shared helpers detect
+the configured Drive location. `--out` chooses another results root. For example:
 
 ```text
 results/preds/base_vsr_zeroshot_test.csv
 results/metrics/base_vsr_zeroshot_test.json
 ```
 
-CSV rows retain question IDs, image groups, true labels, formatted questions,
-predictions, correctness, and option scores. JSON summaries include accuracy,
-per-class accuracy, confusion, and dataset-specific metrics: lateral/depth
-accuracy for What'sUp, per-relation accuracy for VSR, and precision, recall, F1,
-and yes ratio for POPE. Absent-class accuracies are null; undefined POPE
-precision/recall/F1 are zero.
+CSV rows retain IDs, groups, labels, formatted questions, predictions, correctness,
+and option scores. JSON includes metrics, configuration, annotation and question
+hashes, adapter identity, package versions, Git revision, runtime, and CSV
+checksum. The question hash covers IDs, groups, labels, prompts, and image
+filenames; it does not hash image contents. Keep source images fixed too.
+Absent-class accuracies are null; undefined POPE precision/recall/F1 are zero.
 
-Run metadata records the configuration, annotation and question-manifest hashes,
-adapter identity, installed package versions, Git revision, runtime, and CSV
-checksum. The manifest hash covers question IDs, groups, labels, prompts, and
-image filenames; it does not hash image contents. These artifacts support later
-paired baseline/adapter comparisons. Existing outputs require `--overwrite` or
-a different model name. Interrupted inference produces no final result files;
-automatic resume is not implemented yet.
+## Review training questions
 
-The offline suite uses tiny real images and a fake model API, so it needs only
-NumPy, PyYAML, and Pillow from the existing requirements. It does not measure
-model accuracy. Run it with `python -m unittest discover -s tests -v`.
-
-## Training-data hand-check
-
-Once Person B provides the fixed review sample and images:
+Once B supplies the fixed sample and images:
 
 ```bash
 python -m src.handcheck --input data/coco_spatial/handcheck_sample.jsonl
 ```
 
-Open `handcheck/gallery.html` in a browser to inspect images, optional boxes and
-label evidence, record accept/reject/unsure decisions, and export review JSON.
-The file works offline without a server. See [handcheck/README.md](handcheck/README.md)
-for the input schema, review checklist, and save/restore workflow. The gallery
-tool is ready independently of the final sample; no real questions have been
-hand-checked yet.
+Open `handcheck/gallery.html` in a browser. It embeds images and optional boxes
+and label evidence, works offline, and records accept/reject/unsure decisions,
+corrections, and notes. Export JSON to share or safeguard decisions. Restore
+checks the sample fingerprint before replacing a session.
 
-## Baseline / adapter comparison
+See [handcheck/README.md](handcheck/README.md) for the input format and checklist.
+Agree the approximately 70 IDs per person within the fixed 200-question sample
+before reviewing. The gallery does not select or allocate that sample. No real
+training questions have been hand-checked on this branch yet.
 
-After evaluating the base model and adapter with `src.eval`, compare their
-saved artifacts without loading a model:
+## Compare baseline and adapter
+
+After both runs complete, compare saved artifacts without loading a model:
 
 ```bash
 python -m src.stats \
@@ -155,35 +205,59 @@ python -m src.stats \
   --out results/comparisons/targeted
 ```
 
-Each of `--baseline` and `--adapter` accepts multiple metric JSON paths. Supply
-all desired datasets/variants to create one table; files are matched by
-dataset/variant/split, regardless of list order. Each side must contain exactly
-one run for every benchmark being compared. Keep the usual `<results>/metrics/`
-and `<results>/preds/` layout together when copying artifacts between machines.
-Older extraction-only artifacts need conversion or reevaluation with `src.eval`.
+Both file arguments accept multiple paths, matched by dataset/variant/split
+regardless of list order. Each side must contain exactly one run per benchmark.
+Keep the `<results>/metrics/` and `<results>/preds/` layout together when copying
+artifacts. This consumes `src.eval` schema-1 outputs; older extraction-only
+artifacts need conversion or reevaluation.
 
-The command writes `comparison.json`, `comparison.csv`, and `comparison.md` in
-the output folder. JSON/CSV store rates on the 0–1 scale. The Markdown table shows
-percentages and adapter-minus-baseline changes in **percentage points**, with
-95% confidence intervals by default. POPE precision/recall/F1 and yes ratio are
-included; What'sUp includes lateral/depth accuracy. VSR reports overall accuracy.
+Reports are `comparison.json`, `comparison.csv`, and `comparison.md`. JSON/CSV
+store rates on the 0–1 scale. Markdown shows percentages and adapter-minus-baseline
+changes in **percentage points**, with 95% confidence intervals by default. It
+includes overall accuracy, What'sUp lateral/depth accuracy, and POPE precision,
+recall, F1, and yes ratio.
 
-Comparison verifies the CSV and question-manifest checksums, then matches every
-question ID. Labels, groups, prompts, image filenames, source annotation hashes,
-answer-option order, model configuration, and evaluation seed must agree. It
-recomputes metrics from predictions and never silently drops unmatched questions.
-The baseline must have no adapter, and the second run must identify its adapter.
-Recorded environment differences are retained in JSON for review.
+Comparison verifies file/question hashes and matches every ID. Labels, groups,
+prompts, image filenames, source annotation hashes, answer-option order, model
+configuration, and evaluation seed must agree. Metrics are recomputed from
+predictions. Recorded environment differences are retained in JSON.
 
-Confidence intervals use 2,000 paired group-bootstrap draws. What’sUp resamples
-whole object pairs; VSR/POPE resample whole images. Each draw uses the same groups
-for both models and recomputes metrics from the sampled question counts, including
-nonlinear POPE metrics. This preserves related questions and accounts for unequal
-group sizes. Intervals reflect evaluation-group sampling, not variation across
-separate training runs. Metrics with fewer than two contributing groups, or fewer
-than two valid resamples, have no interval. The JSON records valid resample counts.
+Intervals use 2,000 paired group-bootstrap draws: whole object pairs for What'sUp
+and whole images for VSR/POPE. Each draw uses the same groups for both models and
+recomputes metrics from pooled question counts, including nonlinear POPE metrics.
+Intervals reflect evaluation-group sampling, not variation across training runs.
+Fewer than two contributing groups or valid resamples yields no interval.
 
-`--bootstrap`, `--confidence`, and `--seed` override the resampling settings; the
-seed defaults to the baseline's evaluation seed. Limited evaluations require
-`--allow-limited` and are visibly labeled in the table. Existing report files
-require a new output folder or `--overwrite`.
+`--bootstrap`, `--confidence`, and `--seed` override settings; the seed defaults
+to the baseline's evaluation seed. Limited runs require `--allow-limited` and
+are labeled. Existing reports require another output folder or `--overwrite`.
+
+## Measured results
+
+| Benchmark | Base model | Targeted LoRA | Status |
+| --- | --- | --- | --- |
+| What'sUp Controlled B | Pending | Pending | Needs A's implementation and dataset |
+| VSR | Pending | Pending | Variants/splits must be fixed; inference pending |
+| Original COCO POPE | Pending | Pending | Selected variants need baseline inference |
+
+All adapter results also depend on B's trained adapter. Annotation validation
+and synthetic tests establish tool behavior; they do not establish model
+accuracy or fine-tuning gains. Replace this table with measured results and
+links to comparison artifacts after integration and full evaluation.
+
+## Repo map
+
+```text
+configs/base.yaml    shared model, prompts, options, seed, Drive root
+src/common.py        config I/O, paths, seeding, JSON helpers
+src/model_utils.py   shared model API (currently stubs)
+src/data/vsr.py      VSR loader and validation command
+src/data/pope.py     original COCO POPE loader and validation command
+src/eval.py          baseline/adapter inference and saved artifacts
+src/stats.py         metric summaries, paired comparisons, result tables
+src/handcheck.py     offline training-question review gallery builder
+handcheck/          gallery assets, input format, review instructions
+docs/INTEGRATION.md  expected teammate interfaces and artifact handoffs
+tests/              offline checks using synthetic fixtures and a fake model
+NOTES.md            observed facts and implementation decisions
+```
