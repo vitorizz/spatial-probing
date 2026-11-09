@@ -8,3 +8,8 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - Original COCO POPE: random, popular, and adversarial each have 3,000 questions over 500 images, with 1,500 yes and 1,500 no labels. Sources: `https://github.com/RUCAIBox/POPE/tree/main/output/coco` (not POPEv2).
   - VSR uses numeric filenames and `image_link` to distinguish COCO train2017/val2017; POPE uses `COCO_val2014_*.jpg`. Resolve the exact filenames rather than assuming all evaluation images are in val2017.
   - Loaders accept explicit local paths and use only the standard library. Verified with the project `.venv` (Python 3.14); no dependencies added or installed.
+- 2026-11-09 (Person C): evaluation runner and summary metrics.
+  - Quoted `options.yesno` in the shared YAML: PyYAML interprets unquoted `yes`/`no` as booleans. This matches the fix on Person A's reference branch.
+  - `src.eval` uses only the declared model interface. Real inference remains dependent on Person A's model implementation; What'sUp also uses their loader and full-dataset `check` function. No teammate branches were merged.
+  - Baseline/adapter outputs share a question-manifest hash when questions and prompts match. Annotation and CSV hashes are also saved. Limited runs have separate filenames. Paired confidence intervals and comparison tables are left for a later change.
+  - Offline evaluation tests use a fake model API and tiny Pillow images. NumPy, PyYAML, and Pillow are installed in the project `.venv`; all were already declared requirements. No new dependencies.

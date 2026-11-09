@@ -25,6 +25,8 @@ src/common.py       paths, seeding, config I/O
 src/model_utils.py  shared model interface (load, prompt, score)
 src/data/vsr.py     VSR annotation loader and validation command
 src/data/pope.py    original COCO POPE annotation loader and validation command
+src/eval.py         baseline/adapter evaluation and prediction artifacts
+src/stats.py        benchmark metric summaries
 ```
 
 Run code from the repo root as modules: `python -m src.<name>`.
@@ -70,3 +72,56 @@ retain separate question IDs. VSR IDs use the record index, so keep the exact
 annotation file fixed across baseline and adapter runs.
 
 Run the offline data checks with `python -m unittest discover -s tests -v`.
+
+## Evaluation
+
+`src.eval` uses the shared model interface for option scoring, without extracting
+hidden states. Full model execution requires Person A's `model_utils.py`
+implementation to be integrated. What'sUp also requires their `src/data/whatsup.py`
+loader and its `check` function. The evaluator does not download datasets.
+
+With the venv active and the declared requirements installed:
+
+```bash
+python -m src.eval --dataset vsr --variant zeroshot --split test \
+  --annotations data/vsr/zeroshot/test.jsonl --image-root data/coco
+python -m src.eval --dataset pope --variant adversarial \
+  --annotations data/pope/coco_pope_adversarial.json --image-root data/coco
+python -m src.eval --dataset whatsup --data-root data
+```
+
+VSR defaults to `zeroshot`/`test`; POPE defaults to `random`. Run each desired
+variant separately. Add `--adapter runs/targeted/adapter --model-name targeted`
+to evaluate an adapter on the same questions and prompts. `--config` merges a
+YAML override over the shared base configuration.
+
+Add `--limit 8` for a smoke run. Only selected image paths are required for these
+runs, and output filenames include `_limit8` to keep them separate from full
+evaluations. Full What'sUp runs invoke Person A's dataset checks first.
+
+Results go under `results_dir()` (local `results/` or Drive), or an explicit
+`--out` folder. For example, the VSR baseline writes:
+
+```text
+results/preds/base_vsr_zeroshot_test.csv
+results/metrics/base_vsr_zeroshot_test.json
+```
+
+CSV rows retain question IDs, image groups, true labels, formatted questions,
+predictions, correctness, and option scores. JSON summaries include accuracy,
+per-class accuracy, confusion, and dataset-specific metrics: lateral/depth
+accuracy for What'sUp, per-relation accuracy for VSR, and precision, recall, F1,
+and yes ratio for POPE. Absent-class accuracies are null; undefined POPE
+precision/recall/F1 are zero.
+
+Run metadata records the configuration, annotation and question-manifest hashes,
+adapter identity, installed package versions, Git revision, runtime, and CSV
+checksum. The manifest hash covers question IDs, groups, labels, prompts, and
+image filenames; it does not hash image contents. These artifacts support later
+paired baseline/adapter comparisons. Existing outputs require `--overwrite` or
+a different model name. Interrupted inference produces no final result files;
+automatic resume is not implemented yet.
+
+The offline suite uses tiny real images and a fake model API, so it needs only
+NumPy, PyYAML, and Pillow from the existing requirements. It does not measure
+model accuracy. Run it with `python -m unittest discover -s tests -v`.
