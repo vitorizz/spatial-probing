@@ -3,7 +3,7 @@ AI_USAGE.md
 SPEC.md
 Spatial Probing Project*.pdf
 
-data/
+/data/
 runs/
 results/hidden/
 *.npy
