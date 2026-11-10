@@ -22,5 +22,6 @@ train:
   max_grad_norm: 1.0
   log_every: 10
   eval_every: 200
+  save_every: 200
   val_questions: 300
   num_workers: 2

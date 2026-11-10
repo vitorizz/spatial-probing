@@ -153,11 +153,7 @@ def train(model: Any, processor: Any, cfg: dict, out_dir: Path, max_examples: in
     rows = rows[: total_steps * bs * accum]  # drop the last incomplete optimizer step
     val_rows = read_jsonl(data_dir() / cfg["data"]["val"])[: tcfg["val_questions"]]
 
-    loader = torch.utils.data.DataLoader(
-        rows, batch_size=bs, shuffle=False, collate_fn=Collator(processor, data_dir()),
-        num_workers=tcfg["num_workers"],
-    )
-    params = [p for p in model.parameters() if p.requires_grad]
+    params =[p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.AdamW(params, lr=tcfg["lr"], weight_decay=tcfg["weight_decay"])
     from transformers import get_cosine_schedule_with_warmup
 
@@ -176,9 +172,26 @@ def train(model: Any, processor: Any, cfg: dict, out_dir: Path, max_examples: in
         append_csv(out_dir / "val_curve.csv", {"step": step, **metrics})
         print(f"step {step}: {metrics}")
 
-    log_val(0)
+    ckpt_path = out_dir / "checkpoint.pt"
+    start_step = 0
+    if ckpt_path.exists():
+        start_step = load_checkpoint(ckpt_path, model, optimizer, scheduler, scaler)
+        for name in ("train_log.csv", "val_curve.csv"):
+            drop_rows_after(out_dir / name, start_step)
+        print(f"resumed from step {start_step}")
+    else:
+        for name in ("train_log.csv", "val_curve.csv"):
+            (out_dir / name).unlink(missing_ok=True)
+        log_val(0)
+
+    # Skip the batches already trained on; the data order is fixed, so this is the data position.
+    skip = start_step * accum * bs
+    loader = torch.utils.data.DataLoader(
+        rows[skip:], batch_size=bs, shuffle=False, collate_fn=Collator(processor, data_dir()),
+        num_workers=tcfg["num_workers"],
+    )
     model.train()
-    step, window, t0 = 0, [], time.time()
+    step, window, t0 = start_step, [], time.time()
     eval_seconds = 0.0
     for i, batch in enumerate(loader):
         batch = batch.to(model.device)
@@ -200,16 +213,67 @@ def train(model: Any, processor: Any, cfg: dict, out_dir: Path, max_examples: in
         if step % tcfg["log_every"] == 0 or step == total_steps:
             append_csv(out_dir / "train_log.csv", {
                 "step": step, "loss": round(sum(window) / len(window), 5),
-                "lr": scheduler.get_last_lr()[0], "sec_per_step": round((time.time() - t0 - eval_seconds) / step, 2),
+                "lr": scheduler.get_last_lr()[0],
+                "sec_per_step": round((time.time() - t0 - eval_seconds) / (step - start_step), 2),
                 "max_mem_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
             })
         window = []
         if step % tcfg["eval_every"] == 0 and step != total_steps:
             log_val(step)
+        if step % tcfg["save_every"] == 0 and step != total_steps:
+            save_checkpoint(ckpt_path, step, model, optimizer, scheduler, scaler)
 
     log_val(step)
     model.save_pretrained(out_dir / "adapter")
+    ckpt_path.unlink(missing_ok=True)
     print(f"saved adapter -> {out_dir / 'adapter'}")
+
+
+def save_checkpoint(path: Path, step: int, model: Any, optimizer: Any, scheduler: Any, scaler: Any) -> None:
+    """LoRA weights + optimizer, scheduler, scaler and RNG states. Written to a temp file
+    and renamed, so a disconnect mid-save leaves the previous checkpoint intact."""
+    from peft import get_peft_model_state_dict
+
+    tmp = path.with_suffix(".tmp")
+    torch.save({
+        "step": step,
+        "lora": get_peft_model_state_dict(model),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict(),
+        "scaler": scaler.state_dict(),
+        "rng_cpu": torch.get_rng_state(),
+        "rng_cuda": torch.cuda.get_rng_state_all(),
+    }, tmp)
+    tmp.replace(path)
+    print(f"checkpoint at step {step}")
+
+
+def load_checkpoint(path: Path, model: Any, optimizer: Any, scheduler: Any, scaler: Any) -> int:
+    from peft import set_peft_model_state_dict
+
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    result = set_peft_model_state_dict(model, state["lora"])
+    assert not getattr(result, "unexpected_keys", []), "checkpoint does not match this LoRA setup"
+    optimizer.load_state_dict(state["optimizer"])
+    scheduler.load_state_dict(state["scheduler"])
+    scaler.load_state_dict(state["scaler"])
+    torch.set_rng_state(state["rng_cpu"])
+    torch.cuda.set_rng_state_all(state["rng_cuda"])
+    return state["step"]
+
+
+def drop_rows_after(path: Path, step: int) -> None:
+    """Remove log rows written after the checkpoint, so a resumed run doesn't log them twice."""
+    if not path.exists():
+        return
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    keep = [r for r in rows if int(r["step"]) <= step]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        if keep:
+            w = csv.DictWriter(f, fieldnames=list(keep[0]))
+            w.writeheader()
+            w.writerows(keep)
 
 
 def main() -> None:
@@ -222,6 +286,9 @@ def main() -> None:
     set_seed(cfg["seed"])
     run_name = cfg["run_name"] + (f"_smoke{args.max_examples}" if args.max_examples else "")
     out_dir = runs_dir() / run_name
+    if (out_dir / "adapter" / "adapter_config.json").exists():
+        print(f"{out_dir / 'adapter'} already exists; this run is finished. Delete it to retrain.")
+        return
 
     model, processor = load_model(cfg)
     model.config.use_cache = False
