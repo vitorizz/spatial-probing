@@ -3,6 +3,7 @@
 Usage:
     python -m src.data.coco_spatial exclude
     python -m src.data.coco_spatial pairs --split val2017
+    python -m src.data.coco_spatial pairs --split train2017 --max-images 1500
     python -m src.data.coco_spatial download --split val2017
     python -m src.data.coco_spatial depth --split val2017
     python -m src.data.coco_spatial check-depth --split val2017
@@ -110,7 +111,9 @@ def lateral_relation(a: dict, b: dict, width: int, cfg: dict) -> tuple[str | Non
     return ("left" if acx < bcx else "right"), gap
 
 
-def build_pairs(split: str, cfg: dict) -> None:
+def build_pairs(split: str, cfg: dict, max_images: int | None = None) -> None:
+    """With max_images, images are visited in a seeded random order and the run stops after
+    max_images images with pairs, so a larger max_images keeps the smaller run's images."""
     from pycocotools.coco import COCO
 
     pcfg = cfg["pairs"]
@@ -123,8 +126,13 @@ def build_pairs(split: str, cfg: dict) -> None:
     out_path = out_dir / f"pairs_{split}.jsonl"
     n_images = n_pairs = n_lateral = n_excluded = 0
     out_dir.mkdir(parents=True, exist_ok=True)
+    img_ids = sorted(coco.getImgIds())
+    if max_images is not None:
+        random.Random(cfg["seed"]).shuffle(img_ids)
     with open(out_path, "w", encoding="utf-8") as f:
-        for img_id in tqdm(sorted(coco.getImgIds()), desc=f"pairs {split}"):
+        for img_id in tqdm(img_ids, desc=f"pairs {split}"):
+            if max_images is not None and n_images >= max_images:
+                break
             if img_id in excluded:
                 n_excluded += 1
                 continue
@@ -429,6 +437,7 @@ def main() -> None:
     sub.add_parser("exclude", help="save COCO ids used by VSR and POPE")
     p = sub.add_parser("pairs", help="pick object pairs and left/right labels from annotations")
     p.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
+    p.add_argument("--max-images", type=int, default=None, help="stop after this many images with pairs")
     d = sub.add_parser("download", help="download and shrink the images that have pairs")
     d.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     dp = sub.add_parser("depth", help="median depth per object with Depth Anything V2")
@@ -443,7 +452,7 @@ def main() -> None:
     if args.cmd == "exclude":
         build_exclusion_list()
     elif args.cmd == "pairs":
-        build_pairs(args.split, cfg)
+        build_pairs(args.split, cfg, args.max_images)
     elif args.cmd == "download":
         download_images(args.split, cfg)
     elif args.cmd == "depth":
