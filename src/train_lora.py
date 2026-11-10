@@ -12,9 +12,10 @@ from pathlib import Path
 from typing import Any
 
 import torch
+from PIL import Image
 
 from src.common import load_config, read_json, results_dir, runs_dir, save_config, set_seed
-from src.model_utils import find_module_paths, get_arch_facts, load_model
+from src.model_utils import chat_text, find_module_paths, get_arch_facts, load_model
 
 
 def choose_layers(cfg: dict[str, Any], num_layers: int) -> list[int]:
@@ -70,6 +71,39 @@ def check_lora(model: Any, layers: list[int], lcfg: dict[str, Any], out_dir: Pat
         f.write(f"trainable params: {trainable}\ntotal params: {total}\n\n")
         f.write("\n".join(names) + "\n")
     return {"trainable_params": trainable, "total_params": total}
+
+
+def end_of_turn(processor: Any) -> str:
+    """Text the chat template puts after an assistant answer, minus the trailing newline."""
+    user = {"role": "user", "content": [{"type": "image"}, {"type": "text", "text": "Q"}]}
+    reply = {"role": "assistant", "content": [{"type": "text", "text": "ANSWER"}]}
+    prompt = chat_text(processor, "Q")
+    full = processor.apply_chat_template([user, reply], tokenize=False)
+    assert full.startswith(prompt), "chat template does not extend the eval prompt"
+    return full[len(prompt):].split("ANSWER", 1)[1].rstrip()
+
+
+class Collator:
+    """Builds a batch from question rows: eval prompt + answer + end-of-turn, with labels
+    set to -100 everywhere except the answer and end-of-turn tokens."""
+
+    def __init__(self, processor: Any, image_root: Path):
+        self.processor = processor
+        self.image_root = image_root
+        self.end = end_of_turn(processor)
+
+    def __call__(self, rows: list[dict]) -> dict:
+        texts = [chat_text(self.processor, r["question"]) + r["answer"] + self.end for r in rows]
+        images = [Image.open(self.image_root / r["image_path"]).convert("RGB") for r in rows]
+        batch = self.processor(text=texts, images=images, padding=True, return_tensors="pt")
+        labels = torch.full_like(batch["input_ids"], -100)
+        for i, r in enumerate(rows):
+            target = self.processor.tokenizer(r["answer"] + self.end, add_special_tokens=False)["input_ids"]
+            pos = batch["attention_mask"][i].nonzero().squeeze(-1)[-len(target):]
+            assert batch["input_ids"][i, pos].tolist() == target, f"answer tokens misaligned for {r['id']}"
+            labels[i, pos] = batch["input_ids"][i, pos]
+        batch["labels"] = labels
+        return batch
 
 
 def main() -> None:
