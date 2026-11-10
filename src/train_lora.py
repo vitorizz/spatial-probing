@@ -2,20 +2,27 @@
 
 Usage:
     python -m src.train_lora --config configs/lora_targeted.yaml
+    python -m src.train_lora --config configs/lora_targeted.yaml --max-examples 200   # smoke test
 """
 from __future__ import annotations
 
 import argparse
+import csv
+import math
 import random
 import re
+import time
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 import torch
 from PIL import Image
 
-from src.common import load_config, read_json, results_dir, runs_dir, save_config, set_seed
-from src.model_utils import chat_text, find_module_paths, get_arch_facts, load_model
+from src.common import data_dir, load_config, read_json, results_dir, runs_dir, save_config, set_seed
+from src.data.coco_spatial import read_jsonl
+from src.model_utils import (chat_text, find_module_paths, get_arch_facts, load_model, make_inputs,
+                             option_token_ids, score_options)
 
 
 def choose_layers(cfg: dict[str, Any], num_layers: int) -> list[int]:
@@ -106,21 +113,129 @@ class Collator:
         return batch
 
 
+def append_csv(path: Path, row: dict) -> None:
+    new = not path.exists()
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(row))
+        if new:
+            w.writeheader()
+        w.writerow(row)
+
+
+def evaluate(model: Any, processor: Any, rows: list[dict], cfg: dict) -> dict[str, float]:
+    """Option-scoring accuracy on generated val questions, overall and per axis."""
+    option_ids = {
+        "4way": option_token_ids(processor.tokenizer, cfg["options"]["fourway"]),
+        "yesno": option_token_ids(processor.tokenizer, cfg["options"]["yesno"]),
+    }
+    model.eval()
+    correct = defaultdict(list)
+    for r in rows:
+        image = Image.open(data_dir() / r["image_path"]).convert("RGB")
+        inputs = make_inputs(processor, image, r["question"], model.device)
+        ok = score_options(model, inputs, option_ids[r["qtype"]]).pred == r["answer"]
+        correct["all"].append(ok)
+        correct[r["axis"]].append(ok)
+    model.train()
+    return {f"acc_{k}": round(sum(v) / len(v), 4) for k, v in correct.items()}
+
+
+def train(model: Any, processor: Any, cfg: dict, out_dir: Path, max_examples: int | None) -> None:
+    tcfg = cfg["train"]
+    bs, accum = tcfg["batch_size"], tcfg["grad_accum"]
+
+    rows = read_jsonl(data_dir() / cfg["data"]["train"])
+    random.Random(cfg["seed"]).shuffle(rows)
+    if max_examples is not None:
+        rows = rows[:max_examples]
+    rows = rows * tcfg["epochs"]
+    total_steps = len(rows) // (bs * accum)
+    rows = rows[: total_steps * bs * accum]  # drop the last incomplete optimizer step
+    val_rows = read_jsonl(data_dir() / cfg["data"]["val"])[: tcfg["val_questions"]]
+
+    loader = torch.utils.data.DataLoader(
+        rows, batch_size=bs, shuffle=False, collate_fn=Collator(processor, data_dir()),
+        num_workers=tcfg["num_workers"],
+    )
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.AdamW(params, lr=tcfg["lr"], weight_decay=tcfg["weight_decay"])
+    from transformers import get_cosine_schedule_with_warmup
+
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer, math.ceil(tcfg["warmup_ratio"] * total_steps), total_steps)
+    scaler = torch.amp.GradScaler("cuda")
+    print(f"{len(rows)} examples, {total_steps} optimizer steps of {bs} x {accum}")
+
+    eval_seconds = 0.0
+
+    def log_val(step: int) -> None:
+        nonlocal eval_seconds
+        t = time.time()
+        metrics = evaluate(model, processor, val_rows, cfg)
+        eval_seconds += time.time() - t
+        append_csv(out_dir / "val_curve.csv", {"step": step, **metrics})
+        print(f"step {step}: {metrics}")
+
+    log_val(0)
+    model.train()
+    step, window, t0 = 0, [], time.time()
+    eval_seconds = 0.0
+    for i, batch in enumerate(loader):
+        batch = batch.to(model.device)
+        with torch.autocast("cuda", dtype=torch.float16):
+            loss = model(**batch).loss
+        scaler.scale(loss / accum).backward()
+        window.append(loss.item())
+        if (i + 1) % accum:
+            continue
+
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(params, tcfg["max_grad_norm"])
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad(set_to_none=True)
+        scheduler.step()
+        step += 1
+
+        if step % tcfg["log_every"] == 0 or step == total_steps:
+            append_csv(out_dir / "train_log.csv", {
+                "step": step, "loss": round(sum(window) / len(window), 5),
+                "lr": scheduler.get_last_lr()[0], "sec_per_step": round((time.time() - t0 - eval_seconds) / step, 2),
+                "max_mem_gb": round(torch.cuda.max_memory_allocated() / 2**30, 2),
+            })
+        window = []
+        if step % tcfg["eval_every"] == 0 and step != total_steps:
+            log_val(step)
+
+    log_val(step)
+    model.save_pretrained(out_dir / "adapter")
+    print(f"saved adapter -> {out_dir / 'adapter'}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", required=True)
+    parser.add_argument("--max-examples", type=int, default=None,
+                        help="train on the first N examples only (smoke test); writes to runs/<run>_smoke<N>")
     args = parser.parse_args()
     cfg = load_config(args.config)
     set_seed(cfg["seed"])
-    out_dir = runs_dir() / cfg["run_name"]
+    run_name = cfg["run_name"] + (f"_smoke{args.max_examples}" if args.max_examples else "")
+    out_dir = runs_dir() / run_name
 
     model, processor = load_model(cfg)
+    model.config.use_cache = False
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+    model.enable_input_require_grads()
     layers = choose_layers(cfg, get_arch_facts(model).num_layers)
     model = add_lora(model, layers, cfg["lora"])
     counts = check_lora(model, layers, cfg["lora"], out_dir)
-    save_config({**cfg, "resolved_layers": layers, **counts}, out_dir)
-    print(f"{cfg['run_name']}: layers {layers}, {counts['trainable_params']:,} trainable "
+    save_config({**cfg, "run_name": run_name, "max_examples": args.max_examples,
+                 "resolved_layers": layers, **counts}, out_dir)
+    print(f"{run_name}: layers {layers}, {counts['trainable_params']:,} trainable "
           f"of {counts['total_params']:,} params -> {out_dir}")
+
+    train(model, processor, cfg, out_dir, args.max_examples)
 
 
 if __name__ == "__main__":

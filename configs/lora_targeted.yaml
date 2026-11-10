@@ -2,8 +2,25 @@ run_name: lora_targeted
 layers: selected            # selected (probes/selected_layers.json) | all | random
 random_k: 8
 
+data:                       # relative to the data folder (Drive on Colab)
+  train: coco_spatial/train.jsonl
+  val: coco_spatial/val.jsonl
+
 lora:
   r: 16
   alpha: 32
   dropout: 0.05
   target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+train:
+  epochs: 1
+  lr: 1.0e-4
+  weight_decay: 0.0
+  warmup_ratio: 0.03
+  batch_size: 2
+  grad_accum: 8             # effective batch 16
+  max_grad_norm: 1.0
+  log_every: 10
+  eval_every: 200
+  val_questions: 300
+  num_workers: 2
