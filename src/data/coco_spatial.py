@@ -6,6 +6,7 @@ Usage:
     python -m src.data.coco_spatial download --split val2017
     python -m src.data.coco_spatial depth --split val2017
     python -m src.data.coco_spatial check-depth --split val2017
+    python -m src.data.coco_spatial questions --splits val2017
 """
 from __future__ import annotations
 
@@ -306,6 +307,121 @@ def check_depth(split: str, cfg: dict, n: int = 5) -> None:
               f"the {p['a']['name']} is {'in front of' if rel == 'front' else 'behind'} the {p['b']['name']}")
 
 
+OPPOSITE = {"left": "right", "right": "left", "front": "behind", "behind": "front"}
+AXIS = {"left": "lateral", "right": "lateral", "front": "depth", "behind": "depth"}
+
+
+def pair_questions(p: dict, depths: dict, split: str, cfg: dict, rng: random.Random) -> list[dict]:
+    """All questions for one pair, with o1/o2 order randomized."""
+    qcfg = cfg["questions"]
+    a_depth, b_depth = depths.get(str(p["a"]["ann_id"])), depths.get(str(p["b"]["ann_id"]))
+    depth = depth_relation(a_depth, b_depth, cfg["depth"])
+    depth_gap = None if a_depth is None or b_depth is None else round(abs(a_depth - b_depth), 4)
+    relations = [r for r in (p["lateral"], depth) if r is not None]
+
+    o1, o2 = p["a"]["name"], p["b"]["name"]
+    if rng.random() < 0.5:
+        o1, o2 = o2, o1
+        relations = [OPPOSITE[r] for r in relations]
+
+    base = {
+        "coco_image_id": p["coco_image_id"],
+        "image_path": f"coco_images/{split}/{p['file_name']}",
+        "o1": o1,
+        "o2": o2,
+        "cx_gap": p["cx_gap"],
+        "depth_gap": depth_gap,
+    }
+    out = []
+    for rel in relations:
+        asked = [(rel, "yes")]
+        if rng.random() < qcfg["negative_prob"]:
+            asked.append((OPPOSITE[rel], "no"))
+        for asked_rel, answer in asked:
+            question = rng.choice(qcfg["yesno_templates"]).format(o1=o1, o2=o2, phrase=qcfg["phrases"][asked_rel])
+            out.append({**base, "axis": AXIS[rel], "relation": rel, "qtype": "yesno",
+                        "question": question, "answer": answer})
+    if len(relations) == 1:
+        rel = relations[0]
+        out.append({**base, "axis": AXIS[rel], "relation": rel, "qtype": "4way",
+                    "question": cfg["prompts"]["fourway"].format(o1=o1, o2=o2), "answer": rel})
+    return out
+
+
+def balance_group(q: dict) -> tuple:
+    """4-way: one group per relation. Yes/no: one group per (axis, answer)."""
+    return ("4way", q["relation"]) if q["qtype"] == "4way" else ("yesno", q["axis"], q["answer"])
+
+
+def balance(questions: list[dict], cap: int, rng: random.Random) -> list[dict]:
+    """Downsample so every 4-way relation has equal counts and every yes/no (axis, answer)
+    has equal counts, then shrink all groups by the same factor to at most `cap` questions."""
+    groups: dict[tuple, list[dict]] = {}
+    for q in questions:
+        groups.setdefault(balance_group(q), []).append(q)
+    for qtype in ("4way", "yesno"):
+        keys = [k for k in groups if k[0] == qtype]
+        if keys:
+            n = min(len(groups[k]) for k in keys)
+            for k in keys:
+                groups[k] = rng.sample(groups[k], n)
+    total = sum(len(g) for g in groups.values())
+    if total > cap:
+        groups = {k: rng.sample(g, int(len(g) * cap / total)) for k, g in groups.items()}
+    out = [q for g in groups.values() for q in g]
+    rng.shuffle(out)
+    return out
+
+
+def split_stats(questions: list[dict]) -> dict:
+    return {
+        "questions": len(questions),
+        "images": len({q["coco_image_id"] for q in questions}),
+        "by_qtype": dict(Counter(q["qtype"] for q in questions)),
+        "by_axis": dict(Counter(q["axis"] for q in questions)),
+        "4way_by_relation": dict(Counter(q["relation"] for q in questions if q["qtype"] == "4way")),
+        "yesno_by_answer": dict(Counter(q["answer"] for q in questions if q["qtype"] == "yesno")),
+        "yesno_by_axis_answer": {f"{a}/{b}": n for (a, b), n in sorted(Counter(
+            (q["axis"], q["answer"]) for q in questions if q["qtype"] == "yesno").items())},
+    }
+
+
+def build_questions(splits: list[str], cfg: dict) -> None:
+    qcfg = cfg["questions"]
+    rng = random.Random(cfg["seed"])
+    out_dir = data_dir() / "coco_spatial"
+
+    questions = []
+    for split in splits:
+        pairs = read_jsonl(out_dir / f"pairs_{split}.jsonl")
+        depths = {r["coco_image_id"]: r["depth"] for r in read_jsonl(out_dir / f"depth_{split}.jsonl")}
+        for p in pairs:
+            questions += pair_questions(p, depths.get(p["coco_image_id"], {}), split, cfg, rng)
+
+    images = sorted({q["coco_image_id"] for q in questions})
+    rng.shuffle(images)
+    val_images = set(images[: round(len(images) * qcfg["val_fraction"])])
+    train = balance([q for q in questions if q["coco_image_id"] not in val_images], qcfg["max_train"], rng)
+    val = balance([q for q in questions if q["coco_image_id"] in val_images], qcfg["max_val"], rng)
+
+    excluded = load_exclusion_list()
+    train_ids = {q["coco_image_id"] for q in train}
+    val_ids = {q["coco_image_id"] for q in val}
+    assert not (train_ids | val_ids) & excluded, "evaluation images found in generated data"
+    assert not train_ids & val_ids, "an image appears in both train and val"
+
+    for name, rows in (("train", train), ("val", val)):
+        with open(out_dir / f"{name}.jsonl", "w", encoding="utf-8") as f:
+            for i, q in enumerate(rows):
+                f.write(json.dumps({"id": f"{name}_{i:05d}", **q}) + "\n")
+
+    stats = {"sources": splits, "candidates": len(questions),
+             "train": split_stats(train), "val": split_stats(val)}
+    write_json(stats, out_dir / "stats.json")
+    save_config(cfg, out_dir, "config_questions.yaml")
+    print(json.dumps(stats, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=CONFIG_DIR / "coco_spatial.yaml")
@@ -319,6 +435,8 @@ def main() -> None:
     dp.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     cd = sub.add_parser("check-depth", help="print the clearest depth pairs to verify the direction")
     cd.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
+    qs = sub.add_parser("questions", help="write balanced train/val questions and stats.json")
+    qs.add_argument("--splits", nargs="+", default=["val2017"], choices=["val2017", "train2017"])
     args = parser.parse_args()
     cfg = load_config(args.config)
 
@@ -332,6 +450,8 @@ def main() -> None:
         build_depth(args.split, cfg)
     elif args.cmd == "check-depth":
         check_depth(args.split, cfg)
+    elif args.cmd == "questions":
+        build_questions(args.splits, cfg)
 
 
 if __name__ == "__main__":
