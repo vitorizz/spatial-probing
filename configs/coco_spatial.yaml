@@ -10,3 +10,9 @@ images:
   max_side: 640
   jpeg_quality: 90
   workers: 16
+
+depth:
+  model: depth-anything/Depth-Anything-V2-Small-hf
+  min_mask_pixels: 200
+  min_gap: 0.15
+  larger_is_closer: true   # to verify with check-depth, then record in NOTES.md

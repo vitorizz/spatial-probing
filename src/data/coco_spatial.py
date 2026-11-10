@@ -4,6 +4,8 @@ Usage:
     python -m src.data.coco_spatial exclude
     python -m src.data.coco_spatial pairs --split val2017
     python -m src.data.coco_spatial download --split val2017
+    python -m src.data.coco_spatial depth --split val2017
+    python -m src.data.coco_spatial check-depth --split val2017
 """
 from __future__ import annotations
 
@@ -208,6 +210,102 @@ def download_images(split: str, cfg: dict) -> None:
         print("rerun the command to retry:", failed[:10])
 
 
+def load_depth_model(name: str):
+    import torch
+    from transformers import pipeline
+
+    return pipeline("depth-estimation", model=name, device=0 if torch.cuda.is_available() else -1)
+
+
+def depth_map(pipe, image: Image.Image):
+    """Depth map at the image's size, min-max normalized to [0, 1]."""
+    import numpy as np
+    import torch
+
+    d = pipe(image)["predicted_depth"].float()
+    while d.dim() < 4:
+        d = d.unsqueeze(0)
+    if d.shape[-2:] != (image.height, image.width):
+        d = torch.nn.functional.interpolate(d, size=(image.height, image.width), mode="bilinear", align_corners=False)
+    d = d[0, 0].cpu().numpy()
+    return (d - d.min()) / max(float(d.max() - d.min()), 1e-8)
+
+
+def object_depth(coco, ann_id: int, depth, min_pixels: int) -> float | None:
+    """Median normalized depth over the object's mask, or None if the mask is too small."""
+    import numpy as np
+
+    mask = coco.annToMask(coco.loadAnns(ann_id)[0])
+    h, w = depth.shape
+    if mask.shape != (h, w):
+        mask = np.array(Image.fromarray(mask * 255).resize((w, h), Image.NEAREST)) > 0
+    else:
+        mask = mask.astype(bool)
+    if mask.sum() < min_pixels:
+        return None
+    return float(np.median(depth[mask]))
+
+
+def depth_relation(a_depth: float | None, b_depth: float | None, cfg: dict) -> str | None:
+    """Relation of object a to object b ("front"/"behind"), or None if unclear."""
+    if a_depth is None or b_depth is None or abs(a_depth - b_depth) < cfg["min_gap"]:
+        return None
+    a_closer = (a_depth > b_depth) == cfg["larger_is_closer"]
+    return "front" if a_closer else "behind"
+
+
+def build_depth(split: str, cfg: dict) -> None:
+    from pycocotools.coco import COCO
+
+    dcfg = cfg["depth"]
+    pairs = read_jsonl(data_dir() / "coco_spatial" / f"pairs_{split}.jsonl")
+    objects: dict[int, dict] = {}
+    for p in pairs:
+        entry = objects.setdefault(p["coco_image_id"], {"file_name": p["file_name"], "ann_ids": set()})
+        entry["ann_ids"].update([p["a"]["ann_id"], p["b"]["ann_id"]])
+
+    out_path = data_dir() / "coco_spatial" / f"depth_{split}.jsonl"
+    done = {r["coco_image_id"] for r in read_jsonl(out_path)} if out_path.exists() else set()
+    todo = [i for i in sorted(objects) if i not in done]
+    print(f"{split}: {len(objects)} images, {len(done)} already done")
+    if not todo:
+        return
+
+    coco = COCO(str(annotations_file(split, cfg["annotations_url"])))
+    pipe = load_depth_model(dcfg["model"])
+    with open(out_path, "a", encoding="utf-8") as f:
+        for img_id in tqdm(todo, desc=f"depth {split}"):
+            entry = objects[img_id]
+            image = Image.open(image_dir(split) / entry["file_name"]).convert("RGB")
+            depth = depth_map(pipe, image)
+            medians = {
+                str(ann_id): object_depth(coco, ann_id, depth, dcfg["min_mask_pixels"])
+                for ann_id in sorted(entry["ann_ids"])
+            }
+            f.write(json.dumps({"coco_image_id": img_id, "depth": medians}) + "\n")
+            f.flush()
+
+    save_config(cfg, out_path.parent, f"config_depth_{split}.yaml")
+    print(f"done -> {out_path}")
+
+
+def check_depth(split: str, cfg: dict, n: int = 5) -> None:
+    """Print the n pairs with the largest depth gap, so a human can confirm the direction."""
+    pairs = read_jsonl(data_dir() / "coco_spatial" / f"pairs_{split}.jsonl")
+    depths = {r["coco_image_id"]: r["depth"] for r in read_jsonl(data_dir() / "coco_spatial" / f"depth_{split}.jsonl")}
+    scored = []
+    for p in pairs:
+        d = depths.get(p["coco_image_id"], {})
+        a, b = d.get(str(p["a"]["ann_id"])), d.get(str(p["b"]["ann_id"]))
+        if a is not None and b is not None:
+            scored.append((abs(a - b), p, a, b))
+    for _, p, a, b in sorted(scored, key=lambda s: -s[0])[:n]:
+        rel = depth_relation(a, b, cfg["depth"])
+        print(f"{image_dir(split) / p['file_name']}\n"
+              f"  {p['a']['name']} = {a:.2f}, {p['b']['name']} = {b:.2f}  ->  "
+              f"the {p['a']['name']} is {'in front of' if rel == 'front' else 'behind'} the {p['b']['name']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=CONFIG_DIR / "coco_spatial.yaml")
@@ -217,6 +315,10 @@ def main() -> None:
     p.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     d = sub.add_parser("download", help="download and shrink the images that have pairs")
     d.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
+    dp = sub.add_parser("depth", help="median depth per object with Depth Anything V2")
+    dp.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
+    cd = sub.add_parser("check-depth", help="print the clearest depth pairs to verify the direction")
+    cd.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     args = parser.parse_args()
     cfg = load_config(args.config)
 
@@ -226,6 +328,10 @@ def main() -> None:
         build_pairs(args.split, cfg)
     elif args.cmd == "download":
         download_images(args.split, cfg)
+    elif args.cmd == "depth":
+        build_depth(args.split, cfg)
+    elif args.cmd == "check-depth":
+        check_depth(args.split, cfg)
 
 
 if __name__ == "__main__":
