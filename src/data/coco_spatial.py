@@ -3,6 +3,7 @@
 Usage:
     python -m src.data.coco_spatial exclude
     python -m src.data.coco_spatial pairs --split val2017
+    python -m src.data.coco_spatial download --split val2017
 """
 from __future__ import annotations
 
@@ -13,9 +14,12 @@ import re
 import urllib.request
 import zipfile
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from io import BytesIO
 from itertools import combinations
 from pathlib import Path
 
+from PIL import Image
 from tqdm import tqdm
 
 from src.common import CONFIG_DIR, data_dir, load_config, save_config, write_json
@@ -154,6 +158,56 @@ def build_pairs(split: str, cfg: dict) -> None:
           f"{n_lateral} with a clear left/right, {n_excluded} images excluded -> {out_path}")
 
 
+def read_jsonl(path: Path) -> list[dict]:
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+def image_dir(split: str) -> Path:
+    return data_dir() / "coco_images" / split
+
+
+def download_one(url: str, target: Path, max_side: int, quality: int, retries: int = 3) -> None:
+    """Download, shrink so the long side is at most max_side, save as JPEG.
+    Writes to a temp file first so an interrupted save never looks finished."""
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                img = Image.open(BytesIO(r.read())).convert("RGB")
+            img.thumbnail((max_side, max_side), Image.LANCZOS)
+            tmp = target.with_suffix(".part")
+            img.save(tmp, "JPEG", quality=quality)
+            tmp.replace(target)
+            return
+        except Exception:
+            if attempt == retries - 1:
+                raise
+
+
+def download_images(split: str, cfg: dict) -> None:
+    icfg = cfg["images"]
+    pairs = read_jsonl(data_dir() / "coco_spatial" / f"pairs_{split}.jsonl")
+    urls = {p["file_name"]: p["coco_url"] for p in pairs}
+    out_dir = image_dir(split)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    todo = {name: url for name, url in urls.items() if not (out_dir / name).exists()}
+    print(f"{split}: {len(urls)} images needed, {len(urls) - len(todo)} already on disk")
+
+    failed = []
+    with ThreadPoolExecutor(icfg["workers"]) as pool:
+        futures = {
+            pool.submit(download_one, url, out_dir / name, icfg["max_side"], icfg["jpeg_quality"]): name
+            for name, url in todo.items()
+        }
+        for fut in tqdm(as_completed(futures), total=len(futures), desc=f"download {split}"):
+            if fut.exception() is not None:
+                failed.append(futures[fut])
+
+    print(f"done: {len(urls) - len(failed)} images in {out_dir}, {len(failed)} failed")
+    if failed:
+        print("rerun the command to retry:", failed[:10])
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=CONFIG_DIR / "coco_spatial.yaml")
@@ -161,6 +215,8 @@ def main() -> None:
     sub.add_parser("exclude", help="save COCO ids used by VSR and POPE")
     p = sub.add_parser("pairs", help="pick object pairs and left/right labels from annotations")
     p.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
+    d = sub.add_parser("download", help="download and shrink the images that have pairs")
+    d.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     args = parser.parse_args()
     cfg = load_config(args.config)
 
@@ -168,6 +224,8 @@ def main() -> None:
         build_exclusion_list()
     elif args.cmd == "pairs":
         build_pairs(args.split, cfg)
+    elif args.cmd == "download":
+        download_images(args.split, cfg)
 
 
 if __name__ == "__main__":

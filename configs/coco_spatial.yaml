@@ -5,3 +5,8 @@ pairs:
   max_pairs_per_image: 3
   lateral_min_gap: 0.10
   lateral_max_overlap: 0.30   # fraction of the narrower box's width
+
+images:
+  max_side: 640
+  jpeg_quality: 90
+  workers: 16
