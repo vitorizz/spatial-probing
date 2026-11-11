@@ -38,3 +38,8 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - Speed: 20.1 s per optimizer step (16 examples), 1.26 s per example.
   - Extrapolated: milestone run (2,864 questions, 179 steps) about 60 min of training; full run (12,000 questions, 750 steps) about 4.2 h of training per run, plus about 3 min per 300-question validation pass.
   - Generated val set (148 questions), base model at step 0: acc 0.703, lateral 0.892, depth 0.514. After 12 steps: 0.710 / 0.905 / 0.514.
+- 2026-11-11 (Person B): milestone run `lora_targeted` (PEFT layers 28-35) on the full milestone dataset (2,864 questions, 179 steps of 2 x 8), Colab T4.
+  - Loss: 0.881 (steps 1-10) -> 0.10-0.39 from step 20 on (last logged 0.081 at step 179). Learning rate reached 0.0, so the schedule finished.
+  - Memory: peak 9.41 GB. Speed: 21.4 s per step, about 64 min of training.
+  - Generated val set (148 questions, 74 lateral / 74 depth): step 0 acc 0.703 / lateral 0.892 / depth 0.514; step 179 acc 0.757 / lateral 0.905 / depth 0.608. This is the in-distribution COCO val set only; What'sUp/VSR/POPE evaluation is Person C's `eval.py`.
+  - Adapter on Drive: `spatial_probe/runs/lora_targeted/adapter/` (`adapter_config.json`, `adapter_model.safetensors`). Before the full 12k run, rename this folder to `runs/lora_targeted_milestone` (the script refuses to overwrite a finished run).
