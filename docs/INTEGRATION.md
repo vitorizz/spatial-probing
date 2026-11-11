@@ -112,7 +112,7 @@ command creates `comparison.json`, `comparison.csv`, and `comparison.md`.
 
 Still to complete with the real artifacts:
 
-- Verify the model in the user's local GPU environment (offline tests pass).
+- Verify the model in the user's selected GPU environment using the Colab notebook's smoke tests (offline checks pass).
 - Run actual baselines on the prepared What'sUp, VSR zeroshot/test, and POPE random data.
 - Populate the gallery, review our assigned questions, and resolve issues.
 - Evaluate B's adapter on the same questions and generate the measured table.

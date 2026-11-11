@@ -22,10 +22,10 @@ fake model and synthetic fixtures; their scores are not project results.
 | Component | Available here | Remaining dependency |
 | --- | --- | --- |
 | VSR/POPE data | Milestone VSR zeroshot/test and POPE random annotations/images prepared and validated locally | None for the selected inputs |
-| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | Local GPU runtime and benchmark runs |
+| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata; Colab evaluation notebook | GPU smoke tests and full benchmark runs |
 | Hand-check gallery | B's final question format, joined boxes/depth evidence, offline review/export/restore | Sample selection and reviewer assignments have no named owner; deferred |
 | Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
-| Model loading and scoring | A's implementation in `src/model_utils.py` | Verification on the local GPU runtime |
+| Model loading and scoring | A's implementation in `src/model_utils.py` | Verification in the selected GPU runtime |
 | Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | Training exclusion artifact and final workflow verification |
 
 See [integration handoffs](docs/INTEGRATION.md) for the supplied artifacts and
@@ -55,12 +55,12 @@ npm packages:
 node tests/test_handcheck.js
 ```
 
-For model execution, install the full declared requirements in the execution
-environment with `python -m pip install -r requirements.txt`. The local venv has
-been checked for the offline workflow; the full model runtime and exact version
-pins remain to be confirmed before local GPU execution. Upstream's model
-requirements now include `torchvision`. See [NOTES.md](NOTES.md) for
-observed dataset and implementation details.
+For local model execution, install the declared requirements in the execution
+environment with `python -m pip install -r requirements.txt`. For Colab, use the
+evaluation notebook's setup below, which preserves its CUDA Torch/torchvision.
+The local venv has been checked for the offline workflow; real model execution
+still needs runtime verification. See [NOTES.md](NOTES.md) for observed dataset
+and implementation details.
 
 Run modules as `python -m src.<name>`. Shared model ID, pixel limits, prompts,
 answer options, and seed live in `configs/base.yaml`; load them through
@@ -202,7 +202,7 @@ checksum. The question hash covers IDs, groups, labels, prompts, and image
 filenames; it does not hash image contents. Keep source images fixed too.
 Absent-class accuracies are null; undefined POPE precision/recall/F1 are zero.
 
-### Milestone evaluation on the laptop
+### Milestone evaluation inputs
 
 The selected evaluations are What'sUp Controlled B (408 questions), VSR
 zeroshot/test (1,222 questions, 715 images), and original POPE random (3,000
@@ -220,10 +220,76 @@ The local RTX 3060 Mobile has 6 GB VRAM. The current loader places the full
 model on CUDA, but the published 16-bit weights alone occupy about 7.5 GB
 ([weight index](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/raw/main/model.safetensors.index.json)).
 This GPU therefore needs an offload strategy before the commands below can be
-used locally. CPU offload through the already-declared Accelerate dependency is
-a possible route, but has not been implemented or tested here. The local
-offload route versus a larger GPU remains to be discussed; no quantization or
-model-setting changes have been made.
+used locally. The Colab notebook below uses a larger GPU with the existing
+loader; no offload, quantization, or model-setting changes are needed for that
+route. Local offload has not been implemented or tested.
+
+### Run in Google Colab
+
+Open [notebooks/evaluate.ipynb](notebooks/evaluate.ipynb) in Colab. Select a
+16 GB class or larger GPU; the supplied A baseline used a Tesla T4. Paid plans
+provide premium GPU access subject to
+[availability](https://research.google.com/colaboratory/faq.html), so check the
+assigned runtime rather than assuming a particular card.
+
+Place these two files together in one Google Drive folder:
+
+| File in Drive | Local source |
+| --- | --- |
+| `evaluate.ipynb` | `notebooks/evaluate.ipynb` |
+| `evaluation_inputs.zip` | `data/colab/evaluation_inputs.zip` (prepared upload artifact, ignored by Git) |
+
+Both upload-ready files are available locally together in `data/colab/`.
+
+Set `DRIVE_ROOT` in the first cell to that folder's mounted path. The default is
+`/content/drive/MyDrive/spatial_probe`; Colab does not automatically use the open
+notebook's Drive directory. No GitHub checkout, token, or push is needed to run.
+
+The archive already contains the necessary files in this layout:
+
+```text
+src/                                      repository Python source
+configs/base.yaml                         shared model/prompt config
+requirements.txt                          declared package requirements
+data/controlled_clevr/                    all 408 What'sUp JPEGs
+data/controlled_clevr_dataset.json         What'sUp annotations
+data/vsr/zeroshot/test.jsonl               frozen VSR annotations
+data/pope/coco_pope_random.json            frozen POPE annotations
+data/coco/{train2017,val2017,val2014}/     1,215 referenced COCO JPEGs
+data/prepared/vsr_zeroshot_test.json       VSR image/source manifest
+data/prepared/pope_random.json             POPE image/source manifest
+data/coco_spatial/{train,val}.jsonl        milestone records for separation checks
+runs/lora_targeted/adapter/adapter_config.json
+runs/lora_targeted/adapter/adapter_model.safetensors
+```
+
+The notebook unpacks the bundle into fresh runtime storage, creates a `.venv`
+that reuses Colab's CUDA Torch/torchvision, and installs only the evaluation dependencies already in
+`requirements.txt`. It pins Transformers 5.22.1 and PEFT 0.21.2 from the supplied
+A/B artifacts, and keeps Colab's existing Torch/torchvision versions. It applies
+B's documented `torchao` removal workaround in the disposable Colab environment.
+These setup actions happen when the user
+executes the cells; they have not been run by Codex.
+
+Run setup and both smoke tests first, then the six separate full evaluation
+cells and the comparison cell. Input checks verify the frozen annotations,
+adapter, image hashes, image decoding, and separation from milestone training/
+validation image IDs. Evaluation data is read from the bundle; packages and
+base-model weights still require internet downloads.
+
+Manifests and results persist under `DRIVE_ROOT/results/evaluation_milestone`;
+the supplied files stay intact. After reconnecting, rerun setup and input checks,
+then only unfinished evaluation cells. The notebook requires the same bundle
+fingerprint and preparation manifests before continuing. Without a Git checkout,
+metric files have a null Git revision; `evaluation_inputs.sha256` and the saved
+environment snapshot identify the exact code/input archive used. Rebuild the
+bundle if the source, config, or selected inputs change.
+
+The notebook's CPU preparation and command wiring have been checked locally.
+Actual Colab package setup, GPU inference, and measured results remain pending
+the user's execution.
+
+### Evaluation commands for a configured GPU runtime
 
 GPU execution is performed by the user. Once a compatible execution route and
 the declared model requirements are configured in the project venv, confirm
