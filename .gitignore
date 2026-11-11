@@ -4,7 +4,7 @@ SPEC.md
 Spatial Probing Project*.pdf
 
 /data/
-runs/
+/runs/
 results/hidden/
 /handcheck/gallery.html
 *.npy
@@ -29,3 +29,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Person C
+/tasks.pdf
+/drive/

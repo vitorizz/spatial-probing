@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections import namedtuple
 import csv
 import hashlib
 import io
@@ -15,10 +16,14 @@ from unittest.mock import Mock, patch
 
 from PIL import Image
 
+import src
 from src.common import load_config
 from src.eval import evaluate, main, prepare_items
-from src.model_utils import ScoreResult
 from src.stats import compare_runs
+
+# Only the returned attributes matter to eval. Keep the fake-model suite usable
+# without importing A's Torch-backed implementation or initializing a device.
+ScoreResult = namedtuple("ScoreResult", ("scores", "pred", "hidden"))
 
 
 class EvaluationTests(unittest.TestCase):
@@ -46,13 +51,18 @@ class EvaluationTests(unittest.TestCase):
         self.inputs = Mock(side_effect=lambda processor, image, question, device: {"mode": image.mode, "question": question})
         self.scorer = Mock(return_value=ScoreResult({"yes": 2.0, "no": -1.0}, "yes", None))
         self.token_ids = Mock(side_effect=lambda tokenizer, options: {o: [i] for i, o in enumerate(options)})
-        model_patch = patch.multiple(
-            "src.model_utils", load_model=self.load_model, make_inputs=self.inputs,
-            score_options=self.scorer, option_token_ids=self.token_ids,
-            fourway_question=lambda o1, o2, cfg: cfg["prompts"]["fourway"].format(o1=o1, o2=o2),
-        )
-        model_patch.start()
-        self.addCleanup(model_patch.stop)
+        model_api = ModuleType("src.model_utils")
+        model_api.load_model = self.load_model
+        model_api.make_inputs = self.inputs
+        model_api.score_options = self.scorer
+        model_api.option_token_ids = self.token_ids
+        model_api.fourway_question = lambda o1, o2, cfg: cfg["prompts"]["fourway"].format(o1=o1, o2=o2)
+        modules_patch = patch.dict(sys.modules, {"src.model_utils": model_api})
+        modules_patch.start()
+        self.addCleanup(modules_patch.stop)
+        package_patch = patch.object(src, "model_utils", model_api, create=True)
+        package_patch.start()
+        self.addCleanup(package_patch.stop)
 
     def run_vsr(self, **kwargs):
         with contextlib.redirect_stderr(io.StringIO()):

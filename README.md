@@ -13,22 +13,23 @@ are `left`, `right`, `front`, and `behind`.
 
 ## Current status
 
-This branch contains Person C's evaluation, review, and reporting tools. Full
-model inference has **not** been run on this branch. Tests use a fake model and
-synthetic fixtures; their scores are not project results.
+This branch integrates A/B's model, probing, and training code with Person C's
+evaluation, review, and reporting tools. A's baseline/probing artifacts and B's
+milestone adapter are available in the local, Git-ignored `drive/` download.
+Person C's benchmark inference has **not** been run yet. Offline tests use a
+fake model and synthetic fixtures; their scores are not project results.
 
 | Component | Available here | Remaining dependency |
 | --- | --- | --- |
 | VSR/POPE data | Download command, local-file loading and validation; loaders checked against official annotations | Run preparation for the selected benchmark data |
-| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | A's model implementation; A's What'sUp loader for that dataset |
-| Hand-check gallery | Offline images, boxes, evidence, decisions, JSON export/restore | B's fixed 200-question sample and team assignments |
+| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | Local GPU runtime and benchmark runs |
+| Hand-check gallery | Offline images, boxes, evidence, decisions, JSON export/restore | Fixed 200-question sample, team assignments, and conversion of B's final records |
 | Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
-| Model loading and scoring | Shared signatures in `src/model_utils.py` | A's implementation; current functions raise `NotImplementedError` |
-| Probing, layer selection, COCO training data, LoRA | Awaiting integration | A/B modules and verified commands |
+| Model loading and scoring | A's implementation in `src/model_utils.py` | Verification on the local GPU runtime |
+| Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | Training exclusion artifact and final workflow verification |
 
-Teammate branches have been used as references and have not been merged. Their
-interfaces and artifacts may still change. See [integration handoffs](docs/INTEGRATION.md)
-for the assumptions used by these tools.
+See [integration handoffs](docs/INTEGRATION.md) for the supplied artifacts and
+remaining review, exclusion, and evaluation work.
 
 ## Setup and offline checks
 
@@ -57,7 +58,8 @@ node tests/test_handcheck.js
 For model execution, install the full declared requirements in the execution
 environment with `python -m pip install -r requirements.txt`. The local venv has
 been checked for the offline workflow; the full model runtime and exact version
-pins remain to be confirmed during integration. See [NOTES.md](NOTES.md) for
+pins remain to be confirmed before local GPU execution. Upstream's model
+requirements now include `torchvision`. See [NOTES.md](NOTES.md) for
 observed dataset and implementation details.
 
 Run modules as `python -m src.<name>`. Shared model ID, pixel limits, prompts,
@@ -81,8 +83,9 @@ evaluator merges YAML overrides over that shared base.
 6. **Evaluate the adapter and compare (C).** Use the same questions and prompts
    as the baseline, generate the before/after table, and report measured results.
 
-Steps 3–5 need teammate modules that are not yet on this branch. Their commands
-will be documented after integration. Available commands follow below.
+A/B's modules for steps 3–5 are integrated, and the supplied milestone training
+run is complete. The fixed review sample and training exclusion artifact remain
+to be confirmed. Available evaluation and review commands follow below.
 
 ## Prepare evaluation data
 
@@ -152,19 +155,19 @@ split flags describe the supplied file; loaders cannot infer these choices.
 
 ## Evaluate the base model and adapter
 
-After A's model implementation is integrated, run datasets separately:
+With the model runtime installed, run datasets separately:
 
 ```bash
 python -m src.eval --dataset vsr --variant zeroshot --split test \
   --annotations data/vsr/zeroshot/test.jsonl --image-root data/coco
 python -m src.eval --dataset pope --variant random \
   --annotations data/pope/coco_pope_random.json --image-root data/coco
-python -m src.eval --dataset whatsup --data-root data
+python -m src.eval --dataset whatsup --data-root drive/data
 ```
 
-What'sUp also requires A's loader and data files. Full What'sUp runs invoke that
-loader's dataset checks. Evaluation uses the shared option-scoring interface
-without requesting hidden states.
+The supplied download contains all 408 What'sUp images and annotations. Full
+What'sUp runs invoke A's integrated dataset checks. Evaluation uses the shared
+option-scoring interface without requesting hidden states.
 
 VSR defaults to `zeroshot`/`test`; POPE defaults to `random`. To evaluate another
 variant, change both its annotation path and flag. VSR also supports `random`;
@@ -174,7 +177,7 @@ interpreting adapter results.
 For an adapter, repeat the same command with:
 
 ```text
---adapter runs/targeted/adapter --model-name targeted
+--adapter drive/runs/lora_targeted/adapter --model-name targeted
 ```
 
 Add `--limit 8` for a smoke run. Only selected image paths are required; output
@@ -258,21 +261,22 @@ are labeled. Existing reports require another output folder or `--overwrite`.
 
 | Benchmark | Base model | Targeted LoRA | Status |
 | --- | --- | --- | --- |
-| What'sUp Controlled B | Pending | Pending | Needs A's implementation and dataset |
+| What'sUp Controlled B | Pending | Pending | A's baseline supplied; evaluation in C's output format pending |
 | VSR | Pending | Pending | Variants/splits must be fixed; inference pending |
 | Original COCO POPE | Pending | Pending | Selected variants need baseline inference |
 
-All adapter results also depend on B's trained adapter. Annotation validation
-and synthetic tests establish tool behavior; they do not establish model
-accuracy or fine-tuning gains. Replace this table with measured results and
-links to comparison artifacts after integration and full evaluation.
+The supplied milestone adapter is ready for benchmark evaluation. Annotation
+validation and synthetic tests establish tool behavior; they do not establish
+model accuracy or fine-tuning gains. Replace this table with measured results and
+links to comparison artifacts after full evaluation.
 
 ## Repo map
 
 ```text
 configs/base.yaml    shared model, prompts, options, seed, Drive root
 src/common.py        config I/O, paths, seeding, JSON helpers
-src/model_utils.py   shared model API (currently stubs)
+src/model_utils.py   model loading, prompts, option scoring, PEFT adapter loading
+src/data/whatsup.py  What'sUp loading and full-dataset checks
 src/data/vsr.py      VSR loader and validation command
 src/data/pope.py     original COCO POPE loader and validation command
 src/data/prepare.py  cached annotation/image downloads and preparation manifests

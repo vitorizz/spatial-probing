@@ -1,8 +1,9 @@
 # Person C integration handoffs
 
 These are the interfaces and artifacts used by the current evaluation code.
-They describe integration needs; they do not require merging an unfinished
-teammate branch. Reconcile differences when A/B's implementations are ready.
+A/B's implementations from `origin/main` are integrated. The local, Git-ignored
+`drive/` download supplies A's baseline/probing artifacts, What'sUp data, B's
+generated training data, and the milestone adapter.
 
 ## From A: shared model implementation
 
@@ -31,10 +32,13 @@ For What'sUp, the evaluator imports from `src/data/whatsup.py`:
   labels. The reference implementation checks 408 items and 102 per class.
   Smoke runs with `--limit` bypass this full-dataset check.
 
-Confirm the model runtime and exact package versions after integration. A's
-existing extraction outputs can be retained for probing; comparisons in
+The public function signatures match the evaluator's calls. Confirm the model
+runtime and exact package versions on the user's local GPU before full runs.
+A's existing extraction outputs can be retained for probing; comparisons in
 `src.stats` need the prediction/metadata format emitted by `src.eval`, so
-convert older artifacts or reevaluate with the shared runner.
+reevaluate What'sUp with the shared runner under a separate output root such as
+`--out results/evaluation_milestone`, preserving the supplied artifacts.
+The supplied 408-image dataset is under `drive/data/`.
 
 ## From B: training-data review and exclusion artifacts
 
@@ -42,8 +46,14 @@ For the gallery, supply the **fixed 200-question sample**, images, stable questi
 IDs, and available labeling evidence. The JSONL contract is documented in
 [handcheck/README.md](../handcheck/README.md). It accepts the name/COCO-box
 structure used by B's current candidate-pair reference code, but a final-record
-adapter may be needed. Depth conventions and margins should be supplied as
-evidence rather than inferred by the gallery.
+adapter is needed: B's final rows use `answer`, include yes/no and four-way
+questions, and omit boxes. Pair/depth artifacts supplied alongside them contain
+the evidence. Match object order and scale original-coordinate boxes to the
+resized images when joining those artifacts. Depth conventions and margins
+should be supplied as evidence rather than inferred by the gallery.
+
+The download contains 2,864 training and 148 validation questions with their
+images, but no fixed 200-question sample or reviewer assignments were found.
 
 The team must agree each person's approximately 70 review IDs. Keep this sample
 fixed while reviewing; changes to text, labels, image bytes, boxes, or evidence
@@ -58,19 +68,22 @@ set against the benchmark sources and IDs actually used for evaluation.
 `src.data.prepare` records question IDs, `coco_image_ids`, source URLs, and file
 hashes in `data/prepared/` (or the selected data root). Those manifests describe
 the evaluation selections actually prepared; they do not replace B's broader
-training exclusion builder.
+training exclusion builder. The supplied download does not contain B's original
+`exclude_ids.json`; its location remains to be confirmed.
 
 ## From B: adapter and provenance
 
-Supply the loadable PEFT adapter location, base-model ID, training configuration,
-and the selected-layer artifact received from A. Record the final training data
-and its exclusion check alongside the run. Freeze layer selection before seeing
-adapter evaluation results.
+The supplied milestone adapter is `drive/runs/lora_targeted/adapter`, for
+`Qwen/Qwen2.5-VL-3B-Instruct`, targeting PEFT blocks 28–35. Its run configuration
+and training log are alongside it; the log ends at step 179. A's selected-layer
+artifact is in `drive/results/probes/`. Retain the final training data and its
+exclusion check alongside the run. Freeze layer selection before seeing adapter
+evaluation results.
 
 Use a distinct evaluation model name, for example:
 
 ```text
---adapter runs/targeted/adapter --model-name targeted
+--adapter drive/runs/lora_targeted/adapter --model-name targeted
 ```
 
 The adapter and baseline must use identical evaluation questions, prompts,
@@ -87,7 +100,7 @@ command creates `comparison.json`, `comparison.csv`, and `comparison.md`.
 
 Still to complete with the real artifacts:
 
-- Validate the integrated model interface and agreed evaluation environment.
+- Verify the model in the user's local GPU environment (offline tests pass).
 - Freeze the desired variants/splits and run actual baselines.
 - Populate the gallery, review our assigned questions, and resolve issues.
 - Evaluate B's adapter on the same questions and generate the measured table.
