@@ -76,6 +76,13 @@ the evaluation selections actually prepared; they do not replace B's broader
 training exclusion builder. The supplied download does not contain B's original
 `exclude_ids.json`; its location remains to be confirmed.
 
+For C's selected milestone evaluations, the downloaded VSR zeroshot/test and
+original POPE random annotation IDs have no overlap with the supplied training
+or validation images. This verifies separation for those selections; the
+original broader exclusion artifact remains a pending handoff. Preparation
+manifests and exact checked input hashes are recorded in `data/prepared/` and
+[NOTES.md](../NOTES.md), respectively.
+
 ## From B: adapter and provenance
 
 The supplied milestone adapter is `drive/runs/lora_targeted/adapter`, for
@@ -106,7 +113,7 @@ command creates `comparison.json`, `comparison.csv`, and `comparison.md`.
 Still to complete with the real artifacts:
 
 - Verify the model in the user's local GPU environment (offline tests pass).
-- Freeze the desired variants/splits and run actual baselines.
+- Run actual baselines on the prepared What'sUp, VSR zeroshot/test, and POPE random data.
 - Populate the gallery, review our assigned questions, and resolve issues.
 - Evaluate B's adapter on the same questions and generate the measured table.
 - Replace README's pending results and add verified probing/training commands.

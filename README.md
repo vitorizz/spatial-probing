@@ -21,7 +21,7 @@ fake model and synthetic fixtures; their scores are not project results.
 
 | Component | Available here | Remaining dependency |
 | --- | --- | --- |
-| VSR/POPE data | Download command, local-file loading and validation; loaders checked against official annotations | Run preparation for the selected benchmark data |
+| VSR/POPE data | Milestone VSR zeroshot/test and POPE random annotations/images prepared and validated locally | None for the selected inputs |
 | Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | Local GPU runtime and benchmark runs |
 | Hand-check gallery | B's final question format, joined boxes/depth evidence, offline review/export/restore | Sample selection and reviewer assignments have no named owner; deferred |
 | Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
@@ -202,6 +202,68 @@ checksum. The question hash covers IDs, groups, labels, prompts, and image
 filenames; it does not hash image contents. Keep source images fixed too.
 Absent-class accuracies are null; undefined POPE precision/recall/F1 are zero.
 
+### Milestone evaluation on the laptop
+
+The selected evaluations are What'sUp Controlled B (408 questions), VSR
+zeroshot/test (1,222 questions, 715 images), and original POPE random (3,000
+questions, 500 images). VSR and POPE use the defaults above; other variants are
+outside this milestone comparison. Prepared data stays in the ignored `data/`
+folder, with source URLs, hashes, and image checks in `data/prepared/`.
+What'sUp and the milestone adapter stay in the supplied `drive/` download.
+
+The selected VSR/POPE image IDs have zero overlap with either the supplied
+1,356 training images or 73 validation images. This check does not replace B's
+missing original exclusion artifact or verify benchmarks we did not select.
+See [NOTES.md](NOTES.md) for the exact checked annotation/data hashes.
+
+The local RTX 3060 Mobile has 6 GB VRAM. The current loader places the full
+model on CUDA, but the published 16-bit weights alone occupy about 7.5 GB
+([weight index](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/raw/main/model.safetensors.index.json)).
+This GPU therefore needs an offload strategy before the commands below can be
+used locally. CPU offload through the already-declared Accelerate dependency is
+a possible route, but has not been implemented or tested here. The local
+offload route versus a larger GPU remains to be discussed; no quantization or
+model-setting changes have been made.
+
+GPU execution is performed by the user. Once a compatible execution route and
+the declared model requirements are configured in the project venv, confirm
+CUDA before evaluation; the shared model loader otherwise falls back to CPU:
+
+```bash
+.venv/bin/python -c 'import torch; assert torch.cuda.is_available(), "CUDA is unavailable; finish GPU setup first"; print(torch.cuda.get_device_name(0))'
+```
+
+First check eight What'sUp questions with each model:
+
+```bash
+.venv/bin/python -m src.eval --dataset whatsup --data-root drive/data \
+  --out results/evaluation_milestone --limit 8
+.venv/bin/python -m src.eval --dataset whatsup --data-root drive/data \
+  --out results/evaluation_milestone --limit 8 \
+  --adapter drive/runs/lora_targeted/adapter
+```
+
+Limited results are smoke checks, not milestone scores. Once both succeed,
+remove `--limit 8` to evaluate all 408 questions. For VSR and POPE, use the
+full-dataset commands above with `--out results/evaluation_milestone` and repeat
+each with `--adapter drive/runs/lora_targeted/adapter`. Keep the same config,
+data, and environment for all six full runs. The default model names are `base`
+and `adapted`; no model-name flag is needed. The separate results root preserves
+A's supplied extraction artifacts and produces the format needed by `src.stats`.
+
+After all six full runs, build the paired table without loading a model:
+
+```bash
+.venv/bin/python -m src.stats \
+  --baseline results/evaluation_milestone/metrics/base_whatsup.json \
+    results/evaluation_milestone/metrics/base_vsr_zeroshot_test.json \
+    results/evaluation_milestone/metrics/base_pope_random.json \
+  --adapter results/evaluation_milestone/metrics/adapted_whatsup.json \
+    results/evaluation_milestone/metrics/adapted_vsr_zeroshot_test.json \
+    results/evaluation_milestone/metrics/adapted_pope_random.json \
+  --out results/evaluation_milestone/comparisons
+```
+
 ## Review training questions
 
 Once the team supplies the fixed sample and reviewer assignments:
@@ -266,8 +328,8 @@ are labeled. Existing reports require another output folder or `--overwrite`.
 | Benchmark | Base model | Targeted LoRA | Status |
 | --- | --- | --- | --- |
 | What'sUp Controlled B | Pending | Pending | A's baseline supplied; evaluation in C's output format pending |
-| VSR | Pending | Pending | Variants/splits must be fixed; inference pending |
-| Original COCO POPE | Pending | Pending | Selected variants need baseline inference |
+| VSR zeroshot/test | Pending | Pending | Data prepared; GPU inference pending |
+| Original COCO POPE random | Pending | Pending | Data prepared; GPU inference pending |
 
 The supplied milestone adapter is ready for benchmark evaluation. Annotation
 validation and synthetic tests establish tool behavior; they do not establish
