@@ -30,3 +30,16 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - Layer 0 is the input embedding of the last prompt token, the same token for every photo, so its vector is identical for all 408 items. Probes there sit at exactly chance (0.25 / 0.50) and the shuffled controls fall below chance by construction (0.198 / 0.441): with identical inputs a probe predicts the training folds' majority class, which is the test fold's minority. Reproduced exactly on synthetic data with a constant layer 0. Constant layers are therefore excluded from the shuffled-control check; at every other layer the controls are within 5 points of chance.
   - Fold standard deviation is above 10 points at some layers between 1 and 18 (spec risk "probe curves too noisy"). The selection depends on layers 19-36, where the spread is near 0. The spec's mitigation (also probe on 2,000 COCO 4-way questions) is optional and not done.
   - Runtime: 7 minutes on a 2-core Colab CPU; about 15 s on an 8-core Mac.
+- 2026-11-10 (Person B): reran Person A's pipeline (whatsup, extract_hidden, probe, select_layers) on a second Colab account/Drive. Results reproduced exactly: What'sUp acc 0.500 / lateral 0.995 / depth 0.005; same best layers (4-way 23, lateral 19, depth 21); case B, p = 24, S = 29-36, PEFT layers 28-35. Fold std > 10 points at lateral layers 1, 2, 3, 4, 6 in this run.
+- 2026-11-10 (Person B): on Colab, recent `peft` refuses to create LoRA layers when the preinstalled `torchao` 0.10.0 is present ("only versions above 0.16.0 are supported"). We don't use torchao; the training notebook runs `pip uninstall -y torchao` after installing requirements.
+- 2026-11-10 (Person B): LoRA smoke test, `lora_targeted` (PEFT layers 28-35), 200 examples = 12 optimizer steps of 2 x 8, Colab T4.
+  - Loss falls: 0.884 (mean of steps 1-10) -> 0.486 (steps 11-12).
+  - Memory: peak 9.4 GB allocated of 15 GB, so batch 2 x accumulation 8 fits; no fallback needed.
+  - Speed: 20.1 s per optimizer step (16 examples), 1.26 s per example.
+  - Extrapolated: milestone run (2,864 questions, 179 steps) about 60 min of training; full run (12,000 questions, 750 steps) about 4.2 h of training per run, plus about 3 min per 300-question validation pass.
+  - Generated val set (148 questions), base model at step 0: acc 0.703, lateral 0.892, depth 0.514. After 12 steps: 0.710 / 0.905 / 0.514.
+- 2026-11-11 (Person B): milestone run `lora_targeted` (PEFT layers 28-35) on the full milestone dataset (2,864 questions, 179 steps of 2 x 8), Colab T4.
+  - Loss: 0.881 (steps 1-10) -> 0.10-0.39 from step 20 on (last logged 0.081 at step 179). Learning rate reached 0.0, so the schedule finished.
+  - Memory: peak 9.41 GB. Speed: 21.4 s per step, about 64 min of training.
+  - Generated val set (148 questions, 74 lateral / 74 depth): step 0 acc 0.703 / lateral 0.892 / depth 0.514; step 179 acc 0.757 / lateral 0.905 / depth 0.608. This is the in-distribution COCO val set only; What'sUp/VSR/POPE evaluation is Person C's `eval.py`.
+  - Adapter on Drive: `spatial_probe/runs/lora_targeted/adapter/` (`adapter_config.json`, `adapter_model.safetensors`). Before the full 12k run, rename this folder to `runs/lora_targeted_milestone` (the script refuses to overwrite a finished run).
