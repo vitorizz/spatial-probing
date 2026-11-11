@@ -23,7 +23,7 @@ fake model and synthetic fixtures; their scores are not project results.
 | --- | --- | --- |
 | VSR/POPE data | Download command, local-file loading and validation; loaders checked against official annotations | Run preparation for the selected benchmark data |
 | Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata | Local GPU runtime and benchmark runs |
-| Hand-check gallery | Offline images, boxes, evidence, decisions, JSON export/restore | Fixed 200-question sample, team assignments, and conversion of B's final records |
+| Hand-check gallery | B's final question format, joined boxes/depth evidence, offline review/export/restore | Sample selection and reviewer assignments have no named owner; deferred |
 | Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
 | Model loading and scoring | A's implementation in `src/model_utils.py` | Verification on the local GPU runtime |
 | Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | Training exclusion artifact and final workflow verification |
@@ -76,8 +76,9 @@ evaluator merges YAML overrides over that shared base.
 3. **Probe and select layers (A).** Extract hidden states, train probes, and
    freeze the selected layers before inspecting fine-tuning results.
 4. **Generate and review training questions (B + everyone).** B supplies the
-   fixed sample and evidence; everyone reviews their assigned IDs. Resolve label
-   issues before finalizing the training dataset.
+   questions and evidence; everyone reviews their assigned IDs from a fixed
+   200-question sample. The task sheet does not name an owner for selecting that
+   sample or assigning reviewers; both are deferred pending team coordination.
 5. **Train targeted LoRA (B).** Retain the adapter, base-model identity, training
    configuration, selected-layer artifact, and exclusion-check results.
 6. **Evaluate the adapter and compare (C).** Use the same questions and prompts
@@ -203,10 +204,11 @@ Absent-class accuracies are null; undefined POPE precision/recall/F1 are zero.
 
 ## Review training questions
 
-Once B supplies the fixed sample and images:
+Once the team supplies the fixed sample and reviewer assignments:
 
 ```bash
-python -m src.handcheck --input data/coco_spatial/handcheck_sample.jsonl
+python -m src.handcheck --input data/coco_spatial/handcheck_sample.jsonl \
+  --image-root drive/data --evidence-dir drive/data/coco_spatial
 ```
 
 Open `handcheck/gallery.html` in a browser. It embeds images and optional boxes
@@ -216,8 +218,10 @@ checks the sample fingerprint before replacing a session.
 
 See [handcheck/README.md](handcheck/README.md) for the input format and checklist.
 Agree the approximately 70 IDs per person within the fixed 200-question sample
-before reviewing. The gallery does not select or allocate that sample. No real
-training questions have been hand-checked on this branch yet.
+before reviewing. Neither `tasks.pdf` nor the supplied artifacts identifies who
+selects the sample or assigns reviewers, so those tasks are deferred. The gallery
+does not select or allocate the sample. No real training questions have been
+hand-checked on this branch yet.
 
 ## Compare baseline and adapter
 

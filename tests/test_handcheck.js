@@ -3,8 +3,9 @@ const {test} = require("node:test");
 const assert = require("node:assert/strict");
 const {emptyReview, validateSession} = require("../handcheck/gallery.js");
 
-const sample = {sample_sha256: "fixed-sample", options: ["left", "right", "front", "behind"],
-                items: [{id: "one"}, {id: "two"}]};
+const sample = {sample_sha256: "fixed-sample",
+                items: [{id: "one", options: ["left", "right", "front", "behind"]},
+                        {id: "two", options: ["yes", "no"]}]};
 const review = {...emptyReview("one"), verdict: "reject", corrected_label: "right", notes: "Wrong relation"};
 const session = {schema_version: 1, sample_sha256: "fixed-sample", reviewer: "Person C", reviews: [review]};
 
@@ -33,7 +34,14 @@ test("invalid decisions, corrections, and notes are rejected before restore", ()
 
 test("partial sessions and IDs resembling object properties remain valid", () => {
   assert.equal(validateSession({...session, reviews: []}, sample).reviews.length, 0);
-  const unusual = {...sample, items: [{id: "__proto__"}]};
+  const unusual = {...sample, items: [{id: "__proto__", options: ["left", "right", "front", "behind"]}]};
   assert.deepEqual(validateSession({...session, reviews: [emptyReview("__proto__")]}, unusual).reviews,
                    [emptyReview("__proto__")]);
+});
+
+test("corrections use the answer options for each question", () => {
+  const binary = {...review, id: "two", corrected_label: "no"};
+  assert.deepEqual(validateSession({...session, reviews: [binary]}, sample).reviews, [binary]);
+  assert.throws(() => validateSession({...session, reviews: [{...binary, corrected_label: "right"}]}, sample));
+  assert.throws(() => validateSession({...session, reviews: [{...review, corrected_label: "no"}]}, sample));
 });

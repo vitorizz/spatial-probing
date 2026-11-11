@@ -40,20 +40,25 @@ reevaluate What'sUp with the shared runner under a separate output root such as
 `--out results/evaluation_milestone`, preserving the supplied artifacts.
 The supplied 408-image dataset is under `drive/data/`.
 
-## From B: training-data review and exclusion artifacts
+## Training-data review and B's exclusion artifacts
 
 For the gallery, supply the **fixed 200-question sample**, images, stable question
 IDs, and available labeling evidence. The JSONL contract is documented in
 [handcheck/README.md](../handcheck/README.md). It accepts the name/COCO-box
-structure used by B's current candidate-pair reference code, but a final-record
-adapter is needed: B's final rows use `answer`, include yes/no and four-way
-questions, and omit boxes. Pair/depth artifacts supplied alongside them contain
-the evidence. Match object order and scale original-coordinate boxes to the
-resized images when joining those artifacts. Depth conventions and margins
-should be supplied as evidence rather than inferred by the gallery.
+structure used by B's candidate-pair code and the final `answer`/`qtype` records.
+The gallery preserves literal yes/no questions and uses their saved answers,
+including negative questions whose asked relation differs from `relation`.
+With `--evidence-dir drive/data/coco_spatial`, it joins the supplied pair/depth
+artifacts by COCO split, image ID/filename, and object names. Boxes are ordered
+as `o1`/`o2` and scaled to the downloaded image; depth values and labeling
+configuration snapshots are displayed without regenerating labels.
 
 The download contains 2,864 training and 148 validation questions with their
 images, but no fixed 200-question sample or reviewer assignments were found.
+`tasks.pdf` assigns the gallery to C and reviewing to everyone, but does not
+assign sample selection or reviewer allocation to anyone. Per the user's
+instruction, selection and allocation are deferred until team coordination;
+we do not create a replacement sample or count development checks as reviews.
 
 The team must agree each person's approximately 70 review IDs. Keep this sample
 fixed while reviewing; changes to text, labels, image bytes, boxes, or evidence

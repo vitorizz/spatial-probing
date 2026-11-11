@@ -80,6 +80,76 @@ class HandcheckTests(unittest.TestCase):
         build_gallery(self.source, self.out)
         self.assertIn("No boxes or label evidence supplied.", self.out.read_text())
 
+    def test_mixed_final_records_preserve_negative_questions_and_answer_options(self):
+        question = "Is the cat to the right of the box? Answer yes or no."
+        self.write([
+            {"id": "negative", "image_path": "scene.png", "qtype": "yesno",
+             "question": question, "relation": "left", "answer": "no"},
+            {"id": "fourway", "image_path": "scene.png", "qtype": "4way",
+             "o1": "cat", "o2": "box", "answer": "left"},
+        ])
+        build_gallery(self.source, self.out)
+        parsed = GalleryParser(self.out.read_text())
+        items = json.loads(parsed.payload)["items"]
+        self.assertEqual(items[0], {"id": "negative", "question": question,
+                                    "label": "no", "options": ["yes", "no"]})
+        self.assertEqual(items[1]["options"], ["left", "right", "front", "behind"])
+        selects = []
+        for tag, attrs in parsed.tags:
+            if tag == "select":
+                selects.append(attrs.get("class"))
+        self.assertEqual(selects.count("corrected-label"), 2)
+
+    def test_evidence_matches_swapped_objects_and_rescales_original_boxes(self):
+        images = self.root / "coco_images" / "train2017"
+        images.mkdir(parents=True)
+        self.image.rename(images / "000000000123.png")
+        pair = {"coco_image_id": 123, "file_name": "000000000123.png", "width": 4096, "height": 2048,
+                "a": {"name": "cat", "ann_id": 10, "bbox": [0, 0, 1000, 1000]},
+                "b": {"name": "box", "ann_id": 20, "bbox": [2000, 0, 1000, 1000]}}
+        pairs = self.root / "pairs_train2017.jsonl"
+        pairs.write_text(json.dumps(pair) + "\n")
+        (self.root / "depth_train2017.jsonl").write_text(
+            json.dumps({"coco_image_id": 123, "depth": {"10": 0.2, "20": 0.8}}) + "\n")
+        (self.root / "config_pairs_train2017.yaml").write_text("pairs:\n  lateral_min_gap: 0.1\n")
+        depth_config = self.root / "config_depth_train2017.yaml"
+        depth_config.write_text("depth:\n  larger_is_closer: true\n  min_gap: 0.15\n")
+        row = {"id": "swapped", "coco_image_id": 123, "image_path": "coco_images/train2017/000000000123.png",
+               "o1": "box", "o2": "cat", "qtype": "yesno", "relation": "front",
+               "question": "Is the box behind the cat? Answer yes or no.", "answer": "no"}
+        self.write([row])
+        result = build_gallery(self.source, self.out, evidence_dir=self.root)
+        parsed = GalleryParser(self.out.read_text())
+        boxes = [attrs for tag, attrs in parsed.tags if tag == "rect"]
+        self.assertEqual(boxes[0], {"class": "box-a", "x": "1000.0", "y": "0.0", "width": "500.0", "height": "500.0"})
+        self.assertEqual(boxes[1]["x"], "0.0")
+        self.assertIn('A: box', self.out.read_text())
+        # Check the rendered evidence as text, not only the underlying join helper.
+        import html
+        document = html.unescape(self.out.read_text())
+        self.assertIn('"depth": 0.8', document)
+        self.assertIn('"larger_is_closer": true', document)
+        depth_config.write_text("depth:\n  larger_is_closer: false\n  min_gap: 0.15\n")
+        self.assertNotEqual(result["sample_sha256"], build_gallery(
+            self.source, self.out, evidence_dir=self.root)["sample_sha256"])
+        self.out.write_text("keep existing gallery")
+        self.write([{**row, "o2": "dog"}])
+        with self.assertRaisesRegex(ValueError, "no unique pair evidence"):
+            build_gallery(self.source, self.out, evidence_dir=self.root)
+        self.assertEqual(self.out.read_text(), "keep existing gallery")
+
+    def test_invalid_question_types_answers_and_conflicts_fail_before_publish(self):
+        self.out.write_text("keep existing gallery")
+        for extra in ({"qtype": "yesno", "answer": "no"},
+                      {"qtype": "yesno", "answer": "left", "question": "Is it left?"},
+                      {"qtype": "multiple-choice", "answer": "left"},
+                      {"label": "left", "answer": "right"}):
+            with self.subTest(extra=extra):
+                self.write([{"id": "bad", "image_path": "scene.png", "o1": "cat", "o2": "box", **extra}])
+                with self.assertRaises(ValueError):
+                    build_gallery(self.source, self.out)
+                self.assertEqual(self.out.read_text(), "keep existing gallery")
+
     def test_source_text_cannot_inject_html_or_terminate_json_script(self):
         hostile = '</script><script>alert("x")</script>'
         self.write([{**self.row, "id": hostile, "question": hostile, "evidence": hostile}])

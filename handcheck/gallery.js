@@ -14,12 +14,12 @@
     if (typeof value.reviewer !== "string" || !Array.isArray(value.reviews)) {
       throw new Error("Invalid reviewer or review list.");
     }
-    const ids = new Set(sample.items.map(item => item.id));
+    const items = new Map(sample.items.map(item => [item.id, item]));
     const seen = new Set();
     const reviews = value.reviews.map(review => {
-      if (!review || !ids.has(review.id) || seen.has(review.id) || !verdicts.includes(review.verdict)
+      if (!review || !items.has(review.id) || seen.has(review.id) || !verdicts.includes(review.verdict)
           || typeof review.notes !== "string" || typeof review.corrected_label !== "string"
-          || (review.corrected_label !== "" && !sample.options.includes(review.corrected_label))
+          || (review.corrected_label !== "" && !items.get(review.id).options.includes(review.corrected_label))
           || (review.corrected_label !== "" && review.verdict !== "reject")) {
         throw new Error("Invalid review, duplicate question ID, or correction without rejection.");
       }
