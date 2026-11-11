@@ -32,3 +32,9 @@ Decisions, deviations from the spec, and observed facts (model paths, dataset fi
   - Runtime: 7 minutes on a 2-core Colab CPU; about 15 s on an 8-core Mac.
 - 2026-11-10 (Person B): reran Person A's pipeline (whatsup, extract_hidden, probe, select_layers) on a second Colab account/Drive. Results reproduced exactly: What'sUp acc 0.500 / lateral 0.995 / depth 0.005; same best layers (4-way 23, lateral 19, depth 21); case B, p = 24, S = 29-36, PEFT layers 28-35. Fold std > 10 points at lateral layers 1, 2, 3, 4, 6 in this run.
 - 2026-11-10 (Person B): on Colab, recent `peft` refuses to create LoRA layers when the preinstalled `torchao` 0.10.0 is present ("only versions above 0.16.0 are supported"). We don't use torchao; the training notebook runs `pip uninstall -y torchao` after installing requirements.
+- 2026-11-10 (Person B): LoRA smoke test, `lora_targeted` (PEFT layers 28-35), 200 examples = 12 optimizer steps of 2 x 8, Colab T4.
+  - Loss falls: 0.884 (mean of steps 1-10) -> 0.486 (steps 11-12).
+  - Memory: peak 9.4 GB allocated of 15 GB, so batch 2 x accumulation 8 fits; no fallback needed.
+  - Speed: 20.1 s per optimizer step (16 examples), 1.26 s per example.
+  - Extrapolated: milestone run (2,864 questions, 179 steps) about 60 min of training; full run (12,000 questions, 750 steps) about 4.2 h of training per run, plus about 3 min per 300-question validation pass.
+  - Generated val set (148 questions), base model at step 0: acc 0.703, lateral 0.892, depth 0.514. After 12 steps: 0.710 / 0.905 / 0.514.
