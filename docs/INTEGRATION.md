@@ -23,6 +23,15 @@ Keep prompt construction, pixel limits, and option scoring consistent with the
 baseline/probing implementation. `configs/base.yaml` quotes `yes`/`no` so the
 options stay strings when loaded by PyYAML.
 
+Person C's evaluator applies vision FP32 after model/adapter loading and keeps
+the language backbone in FP16, using `find_module_paths(model)` and the returned
+visual submodule. The saved effective model config includes `vision_dtype:
+float32` alongside `dtype: float16`; metadata records both component dtypes.
+The shared loader, attention settings, and prompts are unchanged. All baseline
+and adapter benchmarks must be rerun under this precision policy; old all-FP16
+outputs are incompatible with the new model config. An isolated T4 check fixed
+VSR item 426; full benchmark validation is pending the user's GPU execution.
+
 For What'sUp, the evaluator imports from `src/data/whatsup.py`:
 
 - `load_whatsup(root)` returns records in a stable order with string `id`,
@@ -37,7 +46,7 @@ runtime and exact package versions on the user's local GPU before full runs.
 A's existing extraction outputs can be retained for probing; comparisons in
 `src.stats` need the prediction/metadata format emitted by `src.eval`, so
 reevaluate What'sUp with the shared runner under a separate output root such as
-`--out results/evaluation_milestone`, preserving the supplied artifacts.
+`--out results/evaluation_milestone_vision_fp32`, preserving the supplied artifacts.
 The supplied 408-image dataset is under `drive/data/`.
 
 ## Training-data review and B's exclusion artifacts

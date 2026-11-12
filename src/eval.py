@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import hashlib
 import importlib.metadata
@@ -105,10 +106,14 @@ def evaluate(
 ) -> dict[str, Any]:
     """Score one dataset and write a CSV plus a JSON summary after a successful run.
 
-    Calls only the public model_utils interface. Model loading, input building,
-    token selection and scoring remain owned by Person A. No hidden states are
-    requested. Limited smoke runs get a separate output filename.
+    Uses Person A's model loading, input building, token selection and scoring.
+    Applies vision FP32 after loading, keeping the language backbone in FP16.
+    No hidden states are requested. Limited runs get a separate output filename.
     """
+    cfg = copy.deepcopy(cfg)
+    if cfg["model"]["dtype"] != "float16":
+        raise ValueError("evaluation requires a float16 language backbone with float32 vision")
+    cfg["model"]["vision_dtype"] = "float32"
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", model_name):
         raise ValueError("model_name must be a simple filename prefix")
     if limit is not None and (type(limit) is not int or limit < 1):
@@ -145,6 +150,16 @@ def evaluate(
     set_seed(cfg["seed"])
     start = time.monotonic()
     model, processor = model_utils.load_model(cfg, adapter=adapter)
+    # Apply after PEFT loading too, in this evaluation process. Vision-only FP32
+    # avoids the observed T4 NaNs without changing the language backbone/kernels.
+    paths = model_utils.find_module_paths(model)
+    vision = model.get_submodule(paths["visual"])
+    vision.float()
+    language = model.get_submodule(paths["lm_layers"])
+    vision_dtype = str(next(vision.parameters()).dtype)
+    language_dtype = str(next(language.parameters()).dtype)
+    if vision_dtype.removeprefix("torch.") != "float32" or language_dtype.removeprefix("torch.") != "float16":
+        raise ValueError(f"unexpected evaluation precision: vision={vision_dtype}, language={language_dtype}")
     loaded = time.monotonic()
     option_ids = model_utils.option_token_ids(processor.tokenizer, options)
     rows = []
@@ -174,7 +189,8 @@ def evaluate(
         "annotations_sha256": annotations_hash,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "runtime": {"load_s": round(loaded - start, 3), "main_pass_s": round(finished - loaded, 3)},
-        "env": _environment() | {"device": str(model.device), "dtype": str(model.dtype)},
+        "env": _environment() | {"device": str(model.device), "dtype": language_dtype,
+                                 "vision_dtype": vision_dtype, "language_dtype": language_dtype},
         "code": _code_version(), "config": cfg,
         "predictions_file": str(predictions_path.relative_to(out)),
     }

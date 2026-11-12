@@ -170,6 +170,15 @@ The supplied download contains all 408 What'sUp images and annotations. Full
 What'sUp runs invoke A's integrated dataset checks. Evaluation uses the shared
 option-scoring interface without requesting hidden states.
 
+After loading the base model and optional adapter, `src.eval` converts the vision
+encoder to FP32 and keeps the language backbone in FP16. This addresses the
+reported T4 NaNs at VSR item `vsr:zeroshot:test:426`, which became finite in an
+isolated check. Full benchmark validation remains pending. Shared attention
+settings and prompts are unchanged. The effective saved config records
+`model.vision_dtype: float32` and `model.dtype: float16`; environment metadata
+records `vision_dtype` and `language_dtype`, with legacy `dtype` referring to
+the language backbone. This happens in every evaluation subprocess.
+
 VSR defaults to `zeroshot`/`test`; POPE defaults to `random`. To evaluate another
 variant, change both its annotation path and flag. VSR also supports `random`;
 POPE supports `popular` and `adversarial`. Settle benchmark selection before
@@ -220,9 +229,9 @@ The local RTX 3060 Mobile has 6 GB VRAM. The current loader places the full
 model on CUDA, but the published 16-bit weights alone occupy about 7.5 GB
 ([weight index](https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct/raw/main/model.safetensors.index.json)).
 This GPU therefore needs an offload strategy before the commands below can be
-used locally. The Colab notebook below uses a larger GPU with the existing
-loader; no offload, quantization, or model-setting changes are needed for that
-route. Local offload has not been implemented or tested.
+used locally. The Colab notebook below uses a larger GPU with the shared loader
+and the evaluator's vision-FP32/language-FP16 policy described above. Local
+offload has not been implemented or tested.
 
 ### Run in Google Colab
 
@@ -272,12 +281,15 @@ These setup actions happen when the user
 executes the cells; they have not been run by Codex.
 
 Run setup and both smoke tests first, then the six separate full evaluation
-cells and the comparison cell. Input checks verify the frozen annotations,
+cells and the comparison cell. Rerun all six full evaluations for this precision
+revision, including previously completed What'sUp runs, under the new
+`evaluation_milestone_vision_fp32` results folder. Earlier all-FP16 results are
+not valid inputs to the new paired comparison. Input checks verify the frozen annotations,
 adapter, image hashes, image decoding, and separation from milestone training/
 validation image IDs. Evaluation data is read from the bundle; packages and
 base-model weights still require internet downloads.
 
-Manifests and results persist under `DRIVE_ROOT/results/evaluation_milestone`;
+Manifests and results persist under `DRIVE_ROOT/results/evaluation_milestone_vision_fp32`;
 the supplied files stay intact. After reconnecting, rerun setup and input checks,
 then only unfinished evaluation cells. The notebook requires the same bundle
 fingerprint and preparation manifests before continuing. Without a Git checkout,
@@ -303,15 +315,15 @@ First check eight What'sUp questions with each model:
 
 ```bash
 .venv/bin/python -m src.eval --dataset whatsup --data-root drive/data \
-  --out results/evaluation_milestone --limit 8
+  --out results/evaluation_milestone_vision_fp32 --limit 8
 .venv/bin/python -m src.eval --dataset whatsup --data-root drive/data \
-  --out results/evaluation_milestone --limit 8 \
+  --out results/evaluation_milestone_vision_fp32 --limit 8 \
   --adapter drive/runs/lora_targeted/adapter
 ```
 
 Limited results are smoke checks, not milestone scores. Once both succeed,
 remove `--limit 8` to evaluate all 408 questions. For VSR and POPE, use the
-full-dataset commands above with `--out results/evaluation_milestone` and repeat
+full-dataset commands above with `--out results/evaluation_milestone_vision_fp32` and repeat
 each with `--adapter drive/runs/lora_targeted/adapter`. Keep the same config,
 data, and environment for all six full runs. The default model names are `base`
 and `adapted`; no model-name flag is needed. The separate results root preserves
@@ -321,13 +333,13 @@ After all six full runs, build the paired table without loading a model:
 
 ```bash
 .venv/bin/python -m src.stats \
-  --baseline results/evaluation_milestone/metrics/base_whatsup.json \
-    results/evaluation_milestone/metrics/base_vsr_zeroshot_test.json \
-    results/evaluation_milestone/metrics/base_pope_random.json \
-  --adapter results/evaluation_milestone/metrics/adapted_whatsup.json \
-    results/evaluation_milestone/metrics/adapted_vsr_zeroshot_test.json \
-    results/evaluation_milestone/metrics/adapted_pope_random.json \
-  --out results/evaluation_milestone/comparisons
+  --baseline results/evaluation_milestone_vision_fp32/metrics/base_whatsup.json \
+    results/evaluation_milestone_vision_fp32/metrics/base_vsr_zeroshot_test.json \
+    results/evaluation_milestone_vision_fp32/metrics/base_pope_random.json \
+  --adapter results/evaluation_milestone_vision_fp32/metrics/adapted_whatsup.json \
+    results/evaluation_milestone_vision_fp32/metrics/adapted_vsr_zeroshot_test.json \
+    results/evaluation_milestone_vision_fp32/metrics/adapted_pope_random.json \
+  --out results/evaluation_milestone_vision_fp32/comparisons
 ```
 
 ## Review training questions

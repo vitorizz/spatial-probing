@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 from collections import namedtuple
 import csv
 import hashlib
@@ -46,6 +47,15 @@ class EvaluationTests(unittest.TestCase):
             "caption": self.item["caption"], "relation": "behind", "label": 1,
         }), encoding="utf-8")
         self.model = SimpleNamespace(device="cpu", dtype="float16")
+        self.vision_parameter = SimpleNamespace(dtype="torch.float16")
+        self.language_parameter = SimpleNamespace(dtype="torch.float16")
+        self.vision = SimpleNamespace(
+            parameters=lambda: iter([self.vision_parameter]),
+            float=Mock(side_effect=lambda: setattr(self.vision_parameter, "dtype", "torch.float32")),
+        )
+        self.language = SimpleNamespace(parameters=lambda: iter([self.language_parameter]))
+        self.model.get_submodule = Mock(side_effect={"model.visual": self.vision,
+                                                     "model.language_model.layers": self.language}.__getitem__)
         self.processor = SimpleNamespace(tokenizer=object())
         self.load_model = Mock(return_value=(self.model, self.processor))
         self.inputs = Mock(side_effect=lambda processor, image, question, device: {"mode": image.mode, "question": question})
@@ -53,6 +63,8 @@ class EvaluationTests(unittest.TestCase):
         self.token_ids = Mock(side_effect=lambda tokenizer, options: {o: [i] for i, o in enumerate(options)})
         model_api = ModuleType("src.model_utils")
         model_api.load_model = self.load_model
+        model_api.find_module_paths = Mock(return_value={"visual": "model.visual",
+                                                         "lm_layers": "model.language_model.layers"})
         model_api.make_inputs = self.inputs
         model_api.score_options = self.scorer
         model_api.option_token_ids = self.token_ids
@@ -74,7 +86,9 @@ class EvaluationTests(unittest.TestCase):
 
     def test_vsr_pipeline_preserves_prompts_scores_and_run_provenance(self):
         metrics = self.run_vsr(adapter="runs/targeted/adapter", model_name="targeted", annotations=self.annotations)
-        self.load_model.assert_called_once_with(self.cfg, adapter="runs/targeted/adapter")
+        effective_cfg = copy.deepcopy(self.cfg)
+        effective_cfg["model"]["vision_dtype"] = "float32"
+        self.load_model.assert_called_once_with(effective_cfg, adapter="runs/targeted/adapter")
         self.token_ids.assert_called_once_with(self.processor.tokenizer, ["yes", "no"])
         inputs = self.scorer.call_args.args[1]
         self.assertEqual(inputs["mode"], "RGB")
@@ -92,6 +106,36 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(metrics["annotations_sha256"], hashlib.sha256(self.annotations.read_bytes()).hexdigest())
         self.assertEqual(metrics["predictions_sha256"], hashlib.sha256(predictions.read_bytes()).hexdigest())
         self.assertEqual(json.loads((self.out / "metrics/targeted_vsr_zeroshot_test.json").read_text()), metrics)
+
+    def test_vision_is_float32_before_scoring_both_models_and_precision_is_saved(self):
+        original = copy.deepcopy(self.cfg)
+        def load(cfg, adapter):
+            self.assertEqual(self.vision_parameter.dtype, "torch.float16")
+            return self.model, self.processor
+        def score(*args):
+            self.assertEqual(self.vision_parameter.dtype, "torch.float32")
+            self.assertEqual(self.language_parameter.dtype, "torch.float16")
+            return ScoreResult({"yes": 2.0, "no": -1.0}, "yes", None)
+        self.load_model.side_effect = load
+        self.scorer.side_effect = score
+        for adapter, name in ((None, "base"), ("adapter", "adapted")):
+            with self.subTest(adapter=adapter):
+                self.vision_parameter.dtype = "torch.float16"
+                metrics = self.run_vsr(adapter=adapter, model_name=name)
+                saved = json.loads((self.out / "metrics" / f"{name}_vsr_zeroshot_test.json").read_text())
+                self.assertEqual(saved["config"]["model"]["vision_dtype"], "float32")
+                self.assertEqual(saved["config"]["model"]["dtype"], "float16")
+                self.assertEqual(saved["env"]["vision_dtype"], "torch.float32")
+                self.assertEqual(saved["env"]["language_dtype"], "torch.float16")
+                self.assertEqual(metrics["env"]["dtype"], "torch.float16")
+        self.assertEqual(self.cfg, original)
+
+    def test_incompatible_precision_fails_before_loading_or_writing_outputs(self):
+        self.cfg["model"]["dtype"] = "float32"
+        with self.assertRaisesRegex(ValueError, "float16 language"):
+            self.run_vsr()
+        self.load_model.assert_not_called()
+        self.assertFalse(self.out.exists())
 
     def test_pope_adds_suffix_and_whatsup_uses_shared_question_builder(self):
         pope = {"id": "pope:random:1", "group": "1", "image_path": str(self.image),
@@ -203,7 +247,9 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(metrics["variant"], "adversarial")
         self.assertEqual(metrics["model"], "adapted")
         self.assertEqual(metrics["f1"], 1.0)
-        self.load_model.assert_called_once_with(self.cfg, adapter="adapter")
+        effective_cfg = copy.deepcopy(self.cfg)
+        effective_cfg["model"]["vision_dtype"] = "float32"
+        self.load_model.assert_called_once_with(effective_cfg, adapter="adapter")
 
     def test_saved_evaluation_artifacts_feed_paired_comparison(self):
         self.scorer.return_value = ScoreResult({"yes": 0.0, "no": 1.0}, "no", None)
@@ -214,6 +260,12 @@ class EvaluationTests(unittest.TestCase):
                               self.out / "metrics/targeted_vsr_zeroshot_test.json", n_bootstrap=32)
         self.assertEqual(result["metrics"]["accuracy"]["delta"], 1.0)
         self.assertIsNone(result["metrics"]["accuracy"]["ci_low"])
+        path = self.out / "metrics/targeted_vsr_zeroshot_test.json"
+        metadata = json.loads(path.read_text())
+        metadata["config"]["model"].pop("vision_dtype")
+        path.write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, "model configuration differs"):
+            compare_runs(self.out / "metrics/base_vsr_zeroshot_test.json", path, n_bootstrap=32)
 
 
 if __name__ == "__main__":
