@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "comparisons": [
+    {
+      "dataset": "whatsup",
+      "variant": null,
+      "split": null,
+      "baseline": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/base_whatsup.json",
+        "model": "base",
+        "predictions_sha256": "4df5ab21a3084812ada14d3030b43b25f5cd551785d20d84fbf188a6945151a8"
+      },
+      "adapter": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/adapted_whatsup.json",
+        "model": "adapted",
+        "adapter": "/content/spatial-evaluation-03fl2wmh/runs/lora_targeted/adapter",
+        "predictions_sha256": "8b9bacd5e1ef37d7978360dd875277aea0a1a184b979f784ebf344425d678f3d"
+      },
+      "limited": false,
+      "n": 408,
+      "n_groups": 102,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 408,
+          "n_groups": 102,
+          "baseline": 0.5,
+          "adapter": 0.803921568627451,
+          "delta": 0.303921568627451,
+          "ci_low": 0.2671568627450981,
+          "ci_high": 0.34068627450980393,
+          "n_bootstrap_valid": 2000
+        },
+        "lateral_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 0.9950980392156863,
+          "adapter": 1.0,
+          "delta": 0.004901960784313708,
+          "ci_low": 0.0,
+          "ci_high": 0.014705882352941124,
+          "n_bootstrap_valid": 2000
+        },
+        "depth_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 0.004901960784313725,
+          "adapter": 0.6078431372549019,
+          "delta": 0.6029411764705882,
+          "ci_low": 0.5294117647058824,
+          "ci_high": 0.6764705882352942,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "vsr",
+      "variant": "zeroshot",
+      "split": "test",
+      "baseline": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/base_vsr_zeroshot_test.json",
+        "model": "base",
+        "predictions_sha256": "b5d8d2d1884005683a3521f2c5eac1c73929279bbe1b2edc5168fb7fee4b7890"
+      },
+      "adapter": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/adapted_vsr_zeroshot_test.json",
+        "model": "adapted",
+        "adapter": "/content/spatial-evaluation-03fl2wmh/runs/lora_targeted/adapter",
+        "predictions_sha256": "58f06bed6aa621fe550b7ebae65d7d7f3dbde2086f2254482696f1575488cf87"
+      },
+      "limited": false,
+      "n": 1222,
+      "n_groups": 715,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 1222,
+          "n_groups": 715,
+          "baseline": 0.8183306055646481,
+          "adapter": 0.820785597381342,
+          "delta": 0.002454991816693952,
+          "ci_low": -0.014913316598449427,
+          "ci_high": 0.019692751087907145,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "pope",
+      "variant": "random",
+      "split": null,
+      "baseline": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/base_pope_random.json",
+        "model": "base",
+        "predictions_sha256": "696e29c9e9b779c01a5e888c95000593c8cf609863f5486c223fe427f01e1a35"
+      },
+      "adapter": {
+        "metrics_file": "results/evaluation_milestone_vision_fp32/metrics/adapted_pope_random.json",
+        "model": "adapted",
+        "adapter": "/content/spatial-evaluation-03fl2wmh/runs/lora_targeted/adapter",
+        "predictions_sha256": "2cc18a3dc150f158c63ad530e60f16647cdc9fe8d9c7e39925d426387692864d"
+      },
+      "limited": false,
+      "n": 3000,
+      "n_groups": 500,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.8826666666666667,
+          "adapter": 0.9073333333333333,
+          "delta": 0.024666666666666615,
+          "ci_low": 0.018333333333333313,
+          "ci_high": 0.030999999999999917,
+          "n_bootstrap_valid": 2000
+        },
+        "precision": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.9880952380952381,
+          "adapter": 0.9818611987381703,
+          "delta": -0.006234039357067789,
+          "ci_low": -0.010971682353363627,
+          "ci_high": -0.0020836621487587584,
+          "n_bootstrap_valid": 2000
+        },
+        "recall": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.7746666666666666,
+          "adapter": 0.83,
+          "delta": 0.055333333333333345,
+          "ci_low": 0.04400000000000004,
+          "ci_high": 0.06666666666666665,
+          "n_bootstrap_valid": 2000
+        },
+        "f1": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.8684603886397608,
+          "adapter": 0.8995664739884393,
+          "delta": 0.031106085348678425,
+          "ci_low": 0.023517752889048154,
+          "ci_high": 0.03865976966608669,
+          "n_bootstrap_valid": 2000
+        },
+        "yes_ratio": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.392,
+          "adapter": 0.4226666666666667,
+          "delta": 0.030666666666666675,
+          "ci_low": 0.024999999999999967,
+          "ci_high": 0.03633333333333333,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    }
+  ]
+}

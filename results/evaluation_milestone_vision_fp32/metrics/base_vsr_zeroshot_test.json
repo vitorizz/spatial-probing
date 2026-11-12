@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "model": "base",
+  "dataset": "vsr",
+  "variant": "zeroshot",
+  "split": "test",
+  "adapter": null,
+  "n": 1222,
+  "accuracy": 0.8183306055646481,
+  "per_class_accuracy": {
+    "yes": 0.8108108108108109,
+    "no": 0.8263069139966274
+  },
+  "pred_counts": {
+    "yes": 613,
+    "no": 609
+  },
+  "confusion": {
+    "labels": [
+      "yes",
+      "no"
+    ],
+    "rows_true_cols_pred": [
+      [
+        510,
+        119
+      ],
+      [
+        103,
+        490
+      ]
+    ]
+  },
+  "per_relation_accuracy": {
+    "above": 0.9032258064516129,
+    "across from": 0.875,
+    "adjacent to": 0.5,
+    "ahead of": 1.0,
+    "alongside": 1.0,
+    "around": 0.0,
+    "at the back of": 0.6666666666666666,
+    "at the edge of": 0.7714285714285715,
+    "at the left side of": 0.8275862068965517,
+    "at the right side of": 0.8571428571428571,
+    "at the side of": 0.6666666666666666,
+    "attached to": 0.5,
+    "away from": 0.9375,
+    "behind": 0.8108108108108109,
+    "below": 0.8,
+    "beneath": 0.8490566037735849,
+    "beside": 0.9310344827586207,
+    "between": 0.75,
+    "by": 0.6923076923076923,
+    "close to": 0.6666666666666666,
+    "consists of": 0.8333333333333334,
+    "contains": 0.8653846153846154,
+    "detached from": 0.6666666666666666,
+    "down from": 0.5,
+    "enclosed by": 0.75,
+    "facing": 0.8571428571428571,
+    "facing away from": 0.391304347826087,
+    "far away from": 0.8,
+    "far from": 1.0,
+    "has as a part": 1.0,
+    "in": 0.9113924050632911,
+    "in front of": 0.8333333333333334,
+    "in the middle of": 0.25,
+    "inside": 0.7368421052631579,
+    "into": 0.8,
+    "left of": 0.8888888888888888,
+    "near": 0.5,
+    "next to": 0.8181818181818182,
+    "off": 1.0,
+    "on": 0.8636363636363636,
+    "on top of": 0.8539325842696629,
+    "opposite to": 0.6666666666666666,
+    "outside": 0.75,
+    "over": 0.8571428571428571,
+    "parallel to": 0.3333333333333333,
+    "part of": 1.0,
+    "perpendicular to": 0.6666666666666666,
+    "right of": 0.75,
+    "surrounding": 0.8055555555555556,
+    "touching": 0.8314606741573034,
+    "toward": 0.5,
+    "under": 0.794392523364486,
+    "within": 0.8
+  },
+  "n_available": 1222,
+  "limit": null,
+  "complete_dataset": true,
+  "manifest_sha256": "665572a5f2278b4ea77e6a65fd5efad8d62a335d2f356c6d7003a6001b5fa01d",
+  "annotations": "/content/spatial-evaluation-03fl2wmh/data/vsr/zeroshot/test.jsonl",
+  "annotations_sha256": "914d9156723b912d8f794b179248af865a68c5f81c9d8e3a21d007778cacaad4",
+  "timestamp_utc": "2026-11-11T23:01:06.368206+00:00",
+  "runtime": {
+    "load_s": 19.819,
+    "main_pass_s": 967.637
+  },
+  "env": {
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "Pillow": "11.3.0",
+    "numpy": "2.4.6",
+    "PyYAML": "6.0.3",
+    "device": "cuda:0",
+    "dtype": "torch.float16",
+    "vision_dtype": "torch.float32",
+    "language_dtype": "torch.float16"
+  },
+  "code": {
+    "revision": null,
+    "tracked_changes": null
+  },
+  "config": {
+    "seed": 0,
+    "model": {
+      "id": "Qwen/Qwen2.5-VL-3B-Instruct",
+      "dtype": "float16",
+      "attn_implementation": "sdpa",
+      "min_pixels": 200704,
+      "max_pixels": 401408,
+      "vision_dtype": "float32"
+    },
+    "prompts": {
+      "fourway": "Where is the {o1} in relation to the {o2}? Answer with exactly one word: left, right, front, or behind.",
+      "vsr": "Is the following statement true about the image? \"{caption}\" Answer yes or no.",
+      "pope_suffix": " Answer yes or no."
+    },
+    "options": {
+      "fourway": [
+        "left",
+        "right",
+        "front",
+        "behind"
+      ],
+      "yesno": [
+        "yes",
+        "no"
+      ]
+    },
+    "paths": {
+      "drive_root": "/content/drive/MyDrive/spatial_probe"
+    }
+  },
+  "predictions_file": "preds/base_vsr_zeroshot_test.csv",
+  "predictions_sha256": "b5d8d2d1884005683a3521f2c5eac1c73929279bbe1b2edc5168fb7fee4b7890"
+}

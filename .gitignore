@@ -6,6 +6,7 @@ Spatial Probing Project*.pdf
 /data/
 /runs/
 results/hidden/
+/handcheck/gallery.html
 *.npy
 *.npz
 *.safetensors
@@ -28,3 +29,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Person C
+/tasks.pdf
+/drive/
