@@ -31,3 +31,7 @@ questions:
     - "Is the {o1} {phrase} the {o2}? Answer yes or no."
     - "Is it true that the {o1} is {phrase} the {o2}? Answer yes or no."
     - "Looking at the image, is the {o1} {phrase} the {o2}? Answer yes or no."
+
+handcheck:
+  n: 200                   # half lateral, half depth, from train.jsonl
+  reviewers: [A, B, C]     # consecutive blocks of the gallery's numbering
