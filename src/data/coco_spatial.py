@@ -8,6 +8,7 @@ Usage:
     python -m src.data.coco_spatial depth --split val2017
     python -m src.data.coco_spatial check-depth --split val2017
     python -m src.data.coco_spatial questions --splits val2017
+    python -m src.data.coco_spatial handcheck
 """
 from __future__ import annotations
 
@@ -430,6 +431,31 @@ def build_questions(splits: list[str], cfg: dict) -> None:
     print(json.dumps(stats, indent=2))
 
 
+def build_handcheck(cfg: dict) -> None:
+    hcfg = cfg["handcheck"]
+    rng = random.Random(cfg["seed"])
+    out_dir = data_dir() / "coco_spatial"
+    train = read_jsonl(out_dir / "train.jsonl")
+
+    # Alternate lateral and depth so every reviewer's block is half of each.
+    lateral, depth = (rng.sample([q for q in train if q["axis"] == axis], hcfg["n"] // 2)
+                      for axis in ("lateral", "depth"))
+    sample = [q for pair in zip(lateral, depth) for q in pair]
+
+    # Consecutive blocks so each reviewer takes a range of gallery numbers (#1-67, #68-134, ...).
+    reviewers = hcfg["reviewers"]
+    for i, q in enumerate(sample):
+        q["reviewer"] = reviewers[i * len(reviewers) // len(sample)]
+
+    with open(out_dir / "handcheck_sample.jsonl", "w", encoding="utf-8") as f:
+        for q in sample:
+            f.write(json.dumps(q) + "\n")
+    for r in reviewers:
+        nums = [i + 1 for i, q in enumerate(sample) if q["reviewer"] == r]
+        axes = dict(Counter(q["axis"] for q in sample if q["reviewer"] == r))
+        print(f"{r}: #{nums[0]}-{nums[-1]} ({len(nums)} questions, {axes})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--config", default=CONFIG_DIR / "coco_spatial.yaml")
@@ -446,6 +472,7 @@ def main() -> None:
     cd.add_argument("--split", default="val2017", choices=["val2017", "train2017"])
     qs = sub.add_parser("questions", help="write balanced train/val questions and stats.json")
     qs.add_argument("--splits", nargs="+", default=["val2017"], choices=["val2017", "train2017"])
+    sub.add_parser("handcheck", help="fixed 200-question review sample split between reviewers")
     args = parser.parse_args()
     cfg = load_config(args.config)
 
@@ -461,6 +488,8 @@ def main() -> None:
         check_depth(args.split, cfg)
     elif args.cmd == "questions":
         build_questions(args.splits, cfg)
+    elif args.cmd == "handcheck":
+        build_handcheck(cfg)
 
 
 if __name__ == "__main__":
