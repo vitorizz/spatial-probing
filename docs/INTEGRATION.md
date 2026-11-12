@@ -42,12 +42,12 @@ For What'sUp, the evaluator imports from `src/data/whatsup.py`:
   labels. The reference implementation checks 408 items and 102 per class.
   Smoke runs with `--limit` bypass this full-dataset check.
 
-The public function signatures match the evaluator's calls. Confirm the model
-runtime and exact package versions on the user's local GPU before full runs.
-A's existing extraction outputs can be retained for probing; comparisons in
-`src.stats` need the prediction/metadata format emitted by `src.eval`, so
-reevaluate What'sUp with the shared runner under a separate output root such as
-`--out results/evaluation_milestone_vision_fp32`, preserving the supplied artifacts.
+The public function signatures match the evaluator's calls. All six milestone
+runs were verified on the user's Colab Tesla T4; local GPU execution remains
+untested. A's existing extraction outputs are retained for probing. Comparisons
+in `src.stats` use the prediction/metadata format emitted by `src.eval`; the
+completed What'sUp evaluations are under
+`results/evaluation_milestone_vision_fp32`, separate from A's supplied artifacts.
 The supplied 408-image dataset is under `drive/data/`.
 
 ## Training-data review and B's exclusion artifacts
@@ -129,7 +129,12 @@ checksums match, and the reported paired confidence intervals reproduce.
 
 Still to complete:
 
-- Obtain the agreed sample/assignments, review our questions, and resolve issues; selection/allocation remain deferred.
-- Obtain B's original broader exclusion artifact (the selected benchmark separation checks passed).
-- Finish README's probing/training command walkthrough.
-- Before the milestone, read the integrated repo and verify the full workflow.
+- Once the team supplies the agreed sample/assignments, review our approximately 70 questions and report issues. Selection/allocation remain deferred; no reviews are claimed complete.
+- Inspect B's original broader exclusion artifact when supplied (the selected benchmark separation checks passed).
+- Before the milestone, complete everyone's repo-reading requirement and be ready to explain C's files in detail and A/B's at a high level.
+
+C's evaluation runner/loaders, gallery tooling, paired statistics, measured table,
+and their README instructions are complete for the selected milestone inputs.
+The README includes a CPU-only command to reproduce the committed table. No
+additional inference is required for these results; review completion and the
+broader exclusion handoff remain open as described above.

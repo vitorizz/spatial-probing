@@ -28,10 +28,10 @@ The measured table below uses those runs; offline tests use synthetic fixtures.
 | Hand-check gallery | B's final question format, joined boxes/depth evidence, offline review/export/restore | Sample selection and reviewer assignments have no named owner; deferred |
 | Comparisons | Verified paired confidence intervals and measured Markdown/CSV/JSON tables | None for the selected milestone runs |
 | Model loading and scoring | A's implementation, plus evaluator vision FP32; all six runs verified on T4 | Other runtimes remain untested |
-| Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | Training exclusion artifact and final workflow verification |
+| Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | B's original broader training exclusion artifact |
 
 See [integration handoffs](docs/INTEGRATION.md) for the supplied artifacts and
-remaining review, exclusion, and evaluation work.
+completed evaluations and remaining review/exclusion handoffs.
 
 ## Setup and offline checks
 
@@ -60,9 +60,10 @@ node tests/test_handcheck.js
 For local model execution, install the declared requirements in the execution
 environment with `python -m pip install -r requirements.txt`. For Colab, use the
 evaluation notebook's setup below, which preserves its CUDA Torch/torchvision.
-The local venv has been checked for the offline workflow; real model execution
-still needs runtime verification. See [NOTES.md](NOTES.md) for observed dataset
-and implementation details.
+The local venv has been checked for the offline workflow; model execution was
+verified on the Colab Tesla T4 used for the milestone. Local GPU execution
+remains untested. See [NOTES.md](NOTES.md) for observed dataset and implementation
+details.
 
 Run modules as `python -m src.<name>`. Shared model ID, pixel limits, prompts,
 answer options, and seed live in `configs/base.yaml`; load them through
@@ -445,8 +446,25 @@ metric JSONs, preparation manifests, the runtime package snapshot, and the
 code/input bundle fingerprint. Smoke outputs are excluded. Prediction bytes are
 preserved through Git so their recorded checksums remain valid. Colab paths in
 raw metadata describe the original runtime; statistics need no source images
-or model weights. To reproduce the table without a GPU, run the comparison
-command above with a fresh `--out` folder.
+or model weights.
+
+To reproduce the committed table from a checkout without a GPU, source images,
+adapter, or the local `drive/` download, use the project venv with the offline
+dependencies from setup:
+
+```bash
+.venv/bin/python -m src.stats \
+  --baseline results/evaluation_milestone_vision_fp32/metrics/base_whatsup.json \
+    results/evaluation_milestone_vision_fp32/metrics/base_vsr_zeroshot_test.json \
+    results/evaluation_milestone_vision_fp32/metrics/base_pope_random.json \
+  --adapter results/evaluation_milestone_vision_fp32/metrics/adapted_whatsup.json \
+    results/evaluation_milestone_vision_fp32/metrics/adapted_vsr_zeroshot_test.json \
+    results/evaluation_milestone_vision_fp32/metrics/adapted_pope_random.json \
+  --out results/reproduced_milestone
+```
+
+This creates Markdown, CSV, and JSON reports in a separate folder. Use a fresh
+output folder if repeating the command; existing reports are protected.
 
 The supplied train/validation image IDs do not overlap these selected evaluation
 images. B's original broader exclusion artifact is still pending, as are the
