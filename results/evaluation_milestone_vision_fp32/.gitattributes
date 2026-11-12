@@ -1,0 +1,2 @@
+# Prediction checksums cover the original CSV bytes, including line endings.
+preds/*.csv -text

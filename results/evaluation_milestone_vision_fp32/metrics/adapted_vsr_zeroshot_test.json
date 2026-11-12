@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "model": "adapted",
+  "dataset": "vsr",
+  "variant": "zeroshot",
+  "split": "test",
+  "adapter": "/content/spatial-evaluation-03fl2wmh/runs/lora_targeted/adapter",
+  "n": 1222,
+  "accuracy": 0.820785597381342,
+  "per_class_accuracy": {
+    "yes": 0.9030206677265501,
+    "no": 0.7335581787521079
+  },
+  "pred_counts": {
+    "yes": 726,
+    "no": 496
+  },
+  "confusion": {
+    "labels": [
+      "yes",
+      "no"
+    ],
+    "rows_true_cols_pred": [
+      [
+        568,
+        61
+      ],
+      [
+        158,
+        435
+      ]
+    ]
+  },
+  "per_relation_accuracy": {
+    "above": 0.9354838709677419,
+    "across from": 0.875,
+    "adjacent to": 0.5,
+    "ahead of": 1.0,
+    "alongside": 1.0,
+    "around": 0.0,
+    "at the back of": 0.5833333333333334,
+    "at the edge of": 0.8,
+    "at the left side of": 0.7931034482758621,
+    "at the right side of": 0.8571428571428571,
+    "at the side of": 0.6666666666666666,
+    "attached to": 1.0,
+    "away from": 1.0,
+    "behind": 0.8108108108108109,
+    "below": 0.8,
+    "beneath": 0.8867924528301887,
+    "beside": 0.7931034482758621,
+    "between": 0.5,
+    "by": 0.6153846153846154,
+    "close to": 1.0,
+    "consists of": 1.0,
+    "contains": 0.8846153846153846,
+    "detached from": 0.6666666666666666,
+    "down from": 0.5,
+    "enclosed by": 0.75,
+    "facing": 0.7142857142857143,
+    "facing away from": 0.391304347826087,
+    "far away from": 0.9,
+    "far from": 1.0,
+    "has as a part": 1.0,
+    "in": 0.9240506329113924,
+    "in front of": 0.8888888888888888,
+    "in the middle of": 0.25,
+    "inside": 0.7719298245614035,
+    "into": 0.8,
+    "left of": 0.8888888888888888,
+    "near": 0.5,
+    "next to": 0.7878787878787878,
+    "off": 1.0,
+    "on": 0.8636363636363636,
+    "on top of": 0.8426966292134831,
+    "opposite to": 1.0,
+    "outside": 0.75,
+    "over": 0.9285714285714286,
+    "parallel to": 0.3333333333333333,
+    "part of": 0.9,
+    "perpendicular to": 0.5555555555555556,
+    "right of": 0.875,
+    "surrounding": 0.7777777777777778,
+    "touching": 0.8089887640449438,
+    "toward": 0.5,
+    "under": 0.8037383177570093,
+    "within": 0.8
+  },
+  "n_available": 1222,
+  "limit": null,
+  "complete_dataset": true,
+  "manifest_sha256": "665572a5f2278b4ea77e6a65fd5efad8d62a335d2f356c6d7003a6001b5fa01d",
+  "annotations": "/content/spatial-evaluation-03fl2wmh/data/vsr/zeroshot/test.jsonl",
+  "annotations_sha256": "914d9156723b912d8f794b179248af865a68c5f81c9d8e3a21d007778cacaad4",
+  "timestamp_utc": "2026-11-11T23:17:47.744356+00:00",
+  "runtime": {
+    "load_s": 24.114,
+    "main_pass_s": 972.622
+  },
+  "env": {
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "Pillow": "11.3.0",
+    "numpy": "2.4.6",
+    "PyYAML": "6.0.3",
+    "device": "cuda:0",
+    "dtype": "torch.float16",
+    "vision_dtype": "torch.float32",
+    "language_dtype": "torch.float16"
+  },
+  "code": {
+    "revision": null,
+    "tracked_changes": null
+  },
+  "config": {
+    "seed": 0,
+    "model": {
+      "id": "Qwen/Qwen2.5-VL-3B-Instruct",
+      "dtype": "float16",
+      "attn_implementation": "sdpa",
+      "min_pixels": 200704,
+      "max_pixels": 401408,
+      "vision_dtype": "float32"
+    },
+    "prompts": {
+      "fourway": "Where is the {o1} in relation to the {o2}? Answer with exactly one word: left, right, front, or behind.",
+      "vsr": "Is the following statement true about the image? \"{caption}\" Answer yes or no.",
+      "pope_suffix": " Answer yes or no."
+    },
+    "options": {
+      "fourway": [
+        "left",
+        "right",
+        "front",
+        "behind"
+      ],
+      "yesno": [
+        "yes",
+        "no"
+      ]
+    },
+    "paths": {
+      "drive_root": "/content/drive/MyDrive/spatial_probe"
+    }
+  },
+  "predictions_file": "preds/adapted_vsr_zeroshot_test.csv",
+  "predictions_sha256": "58f06bed6aa621fe550b7ebae65d7d7f3dbde2086f2254482696f1575488cf87"
+}

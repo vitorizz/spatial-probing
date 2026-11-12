@@ -30,7 +30,8 @@ float32` alongside `dtype: float16`; metadata records both component dtypes.
 The shared loader, attention settings, and prompts are unchanged. All baseline
 and adapter benchmarks must be rerun under this precision policy; old all-FP16
 outputs are incompatible with the new model config. An isolated T4 check fixed
-VSR item 426; full benchmark validation is pending the user's GPU execution.
+VSR item 426; all six full milestone runs subsequently completed and their
+9,260 prediction rows were verified finite.
 
 For What'sUp, the evaluator imports from `src/data/whatsup.py`:
 
@@ -119,11 +120,16 @@ Evaluation writes `preds/<model>_<benchmark>.csv` and
 folders together so comparisons can resolve and verify the CSVs. The comparison
 command creates `comparison.json`, `comparison.csv`, and `comparison.md`.
 
-Still to complete with the real artifacts:
+The user completed the six full runs on a Colab Tesla T4. Their prediction and
+metric files are preserved under `results/evaluation_milestone_vision_fp32/`,
+with input manifests, the bundle fingerprint, and the runtime package snapshot.
+The [measured table](../results/evaluation_milestone_vision_fp32/comparisons/comparison.md)
+was regenerated locally: all scores are finite, source IDs/labels/prompts and
+checksums match, and the reported paired confidence intervals reproduce.
 
-- Verify the model in the user's selected GPU environment using the Colab notebook's smoke tests (offline checks pass).
-- Run actual baselines on the prepared What'sUp, VSR zeroshot/test, and POPE random data.
-- Populate the gallery, review our assigned questions, and resolve issues.
-- Evaluate B's adapter on the same questions and generate the measured table.
-- Replace README's pending results and add verified probing/training commands.
+Still to complete:
+
+- Obtain the agreed sample/assignments, review our questions, and resolve issues; selection/allocation remain deferred.
+- Obtain B's original broader exclusion artifact (the selected benchmark separation checks passed).
+- Finish README's probing/training command walkthrough.
 - Before the milestone, read the integrated repo and verify the full workflow.

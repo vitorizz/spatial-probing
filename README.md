@@ -16,16 +16,18 @@ are `left`, `right`, `front`, and `behind`.
 This branch integrates A/B's model, probing, and training code with Person C's
 evaluation, review, and reporting tools. A's baseline/probing artifacts and B's
 milestone adapter are available in the local, Git-ignored `drive/` download.
-Person C's benchmark inference has **not** been run yet. Offline tests use a
-fake model and synthetic fixtures; their scores are not project results.
+Person C's six full baseline/adapter evaluations completed on a Colab Tesla T4.
+Verified predictions, metadata, input manifests, and comparison reports are in
+[`results/evaluation_milestone_vision_fp32/`](results/evaluation_milestone_vision_fp32/).
+The measured table below uses those runs; offline tests use synthetic fixtures.
 
 | Component | Available here | Remaining dependency |
 | --- | --- | --- |
 | VSR/POPE data | Milestone VSR zeroshot/test and POPE random annotations/images prepared and validated locally | None for the selected inputs |
-| Evaluation | All three datasets, optional adapter, prediction CSVs and run metadata; Colab evaluation notebook | GPU smoke tests and full benchmark runs |
+| Evaluation | All three selected benchmarks completed for baseline and milestone adapter; Colab notebook | None for the selected milestone runs |
 | Hand-check gallery | B's final question format, joined boxes/depth evidence, offline review/export/restore | Sample selection and reviewer assignments have no named owner; deferred |
-| Comparisons | Paired confidence intervals and Markdown/CSV/JSON tables | Actual baseline and adapter predictions |
-| Model loading and scoring | A's implementation in `src/model_utils.py` | Verification in the selected GPU runtime |
+| Comparisons | Verified paired confidence intervals and measured Markdown/CSV/JSON tables | None for the selected milestone runs |
+| Model loading and scoring | A's implementation, plus evaluator vision FP32; all six runs verified on T4 | Other runtimes remain untested |
 | Probing, layer selection, COCO training data, LoRA | A/B modules integrated; milestone artifacts supplied | Training exclusion artifact and final workflow verification |
 
 See [integration handoffs](docs/INTEGRATION.md) for the supplied artifacts and
@@ -173,8 +175,8 @@ option-scoring interface without requesting hidden states.
 After loading the base model and optional adapter, `src.eval` converts the vision
 encoder to FP32 and keeps the language backbone in FP16. This addresses the
 reported T4 NaNs at VSR item `vsr:zeroshot:test:426`, which became finite in an
-isolated check. Full benchmark validation remains pending. Shared attention
-settings and prompts are unchanged. The effective saved config records
+isolated check. All six full milestone runs subsequently completed with finite
+scores. Shared attention settings and prompts are unchanged. The effective saved config records
 `model.vision_dtype: float32` and `model.dtype: float16`; environment metadata
 records `vision_dtype` and `language_dtype`, with legacy `dtype` referring to
 the language backbone. This happens in every evaluation subprocess.
@@ -297,9 +299,9 @@ metric files have a null Git revision; `evaluation_inputs.sha256` and the saved
 environment snapshot identify the exact code/input archive used. Rebuild the
 bundle if the source, config, or selected inputs change.
 
-The notebook's CPU preparation and command wiring have been checked locally.
-Actual Colab package setup, GPU inference, and measured results remain pending
-the user's execution.
+The user completed Colab setup, both smoke tests, and all six full evaluations
+on a Tesla T4. The downloaded full-run outputs and paired reports were verified
+locally; see the measured results below. Future reruns still need runtime checks.
 
 ### Evaluation commands for a configured GPU runtime
 
@@ -403,16 +405,52 @@ are labeled. Existing reports require another output folder or `--overwrite`.
 
 ## Measured results
 
-| Benchmark | Base model | Targeted LoRA | Status |
-| --- | --- | --- | --- |
-| What'sUp Controlled B | Pending | Pending | A's baseline supplied; evaluation in C's output format pending |
-| VSR zeroshot/test | Pending | Pending | Data prepared; GPU inference pending |
-| Original COCO POPE random | Pending | Pending | Data prepared; GPU inference pending |
+User-run Colab Tesla T4 results for Qwen2.5-VL-3B-Instruct and B's milestone
+targeted LoRA (2,864 training questions, 179 optimizer steps, blocks 28–35).
+Both models use vision FP32, language-backbone FP16, shared SDPA attention,
+identical prompts/pixel limits, and seed 0. All 9,260 full-run prediction rows
+have finite scores and were checked against the original questions and labels.
 
-The supplied milestone adapter is ready for benchmark evaluation. Annotation
-validation and synthetic tests establish tool behavior; they do not establish
-model accuracy or fine-tuning gains. Replace this table with measured results and
-links to comparison artifacts after full evaluation.
+Rates are percentages. Changes and 95% confidence intervals are **percentage
+points**, adapter minus baseline.
+
+| Benchmark / metric | N | Base (%) | Adapter (%) | Change (pp) | 95% CI for change (pp) |
+| --- | ---: | ---: | ---: | ---: | --- |
+| What'sUp overall accuracy | 408 | 50.00 | 80.39 | +30.39 | [+26.72, +34.07] |
+| What'sUp lateral accuracy | 204 | 99.51 | 100.00 | +0.49 | [+0.00, +1.47] |
+| What'sUp depth accuracy | 204 | 0.49 | 60.78 | +60.29 | [+52.94, +67.65] |
+| VSR zeroshot/test accuracy | 1,222 | 81.83 | 82.08 | +0.25 | [-1.49, +1.97] |
+| POPE random accuracy | 3,000 | 88.27 | 90.73 | +2.47 | [+1.83, +3.10] |
+| POPE random precision | 3,000 | 98.81 | 98.19 | -0.62 | [-1.10, -0.21] |
+| POPE random recall | 3,000 | 77.47 | 83.00 | +5.53 | [+4.40, +6.67] |
+| POPE random F1 | 3,000 | 86.85 | 89.96 | +3.11 | [+2.35, +3.87] |
+| POPE random predicted-yes ratio | 3,000 | 39.20 | 42.27 | +3.07 | [+2.50, +3.63] |
+
+The largest gain is on What'sUp depth; lateral accuracy was already near its
+ceiling. VSR's interval includes zero, so it does not show a clear accuracy
+gain. POPE accuracy/recall/F1 rise while precision falls slightly. These are
+results from one trained adapter on the selected benchmark variants.
+
+Intervals use 2,000 paired group-bootstrap draws (seed 0): 102 object pairs for
+What'sUp, 715 images for VSR, and 500 images for POPE. They describe evaluation
+group sampling, not variability across training runs. All intervals and summary
+metrics reproduced locally from the saved predictions; each baseline/adapter
+pair has identical recorded environments and effective configs.
+
+The [full report](results/evaluation_milestone_vision_fp32/comparisons/comparison.md)
+also has [JSON](results/evaluation_milestone_vision_fp32/comparisons/comparison.json)
+and [CSV](results/evaluation_milestone_vision_fp32/comparisons/comparison.csv)
+versions. The result folder preserves six full prediction CSVs, their original
+metric JSONs, preparation manifests, the runtime package snapshot, and the
+code/input bundle fingerprint. Smoke outputs are excluded. Prediction bytes are
+preserved through Git so their recorded checksums remain valid. Colab paths in
+raw metadata describe the original runtime; statistics need no source images
+or model weights. To reproduce the table without a GPU, run the comparison
+command above with a fresh `--out` folder.
+
+The supplied train/validation image IDs do not overlap these selected evaluation
+images. B's original broader exclusion artifact is still pending, as are the
+team's fixed review sample and reviewer assignments.
 
 ## Repo map
 

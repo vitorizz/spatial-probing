@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "model": "adapted",
+  "dataset": "pope",
+  "variant": "random",
+  "split": null,
+  "adapter": "/content/spatial-evaluation-03fl2wmh/runs/lora_targeted/adapter",
+  "n": 3000,
+  "accuracy": 0.9073333333333333,
+  "per_class_accuracy": {
+    "yes": 0.83,
+    "no": 0.9846666666666667
+  },
+  "pred_counts": {
+    "yes": 1268,
+    "no": 1732
+  },
+  "confusion": {
+    "labels": [
+      "yes",
+      "no"
+    ],
+    "rows_true_cols_pred": [
+      [
+        1245,
+        255
+      ],
+      [
+        23,
+        1477
+      ]
+    ]
+  },
+  "precision": 0.9818611987381703,
+  "recall": 0.83,
+  "f1": 0.8995664739884393,
+  "yes_ratio": 0.4226666666666667,
+  "n_available": 3000,
+  "limit": null,
+  "complete_dataset": true,
+  "manifest_sha256": "1aae9055cf6d961ced514873b1f922368fa67bb7309cc35bbaf97161e89d1f5f",
+  "annotations": "/content/spatial-evaluation-03fl2wmh/data/pope/coco_pope_random.json",
+  "annotations_sha256": "ac25245170b975a5bdf9080b23fd431dfe6be458bc038259c1f4f09a6bef7994",
+  "timestamp_utc": "2026-11-12T00:35:20.321447+00:00",
+  "runtime": {
+    "load_s": 16.355,
+    "main_pass_s": 2308.361
+  },
+  "env": {
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "Pillow": "11.3.0",
+    "numpy": "2.4.6",
+    "PyYAML": "6.0.3",
+    "device": "cuda:0",
+    "dtype": "torch.float16",
+    "vision_dtype": "torch.float32",
+    "language_dtype": "torch.float16"
+  },
+  "code": {
+    "revision": null,
+    "tracked_changes": null
+  },
+  "config": {
+    "seed": 0,
+    "model": {
+      "id": "Qwen/Qwen2.5-VL-3B-Instruct",
+      "dtype": "float16",
+      "attn_implementation": "sdpa",
+      "min_pixels": 200704,
+      "max_pixels": 401408,
+      "vision_dtype": "float32"
+    },
+    "prompts": {
+      "fourway": "Where is the {o1} in relation to the {o2}? Answer with exactly one word: left, right, front, or behind.",
+      "vsr": "Is the following statement true about the image? \"{caption}\" Answer yes or no.",
+      "pope_suffix": " Answer yes or no."
+    },
+    "options": {
+      "fourway": [
+        "left",
+        "right",
+        "front",
+        "behind"
+      ],
+      "yesno": [
+        "yes",
+        "no"
+      ]
+    },
+    "paths": {
+      "drive_root": "/content/drive/MyDrive/spatial_probe"
+    }
+  },
+  "predictions_file": "preds/adapted_pope_random.csv",
+  "predictions_sha256": "2cc18a3dc150f158c63ad530e60f16647cdc9fe8d9c7e39925d426387692864d"
+}
