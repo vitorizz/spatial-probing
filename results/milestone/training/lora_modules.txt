@@ -1,0 +1,36 @@
+layers (0-based): [28, 29, 30, 31, 32, 33, 34, 35]
+trainable params: 1638400
+total params: 3756261376
+
+base_model.model.model.language_model.layers.28.self_attn.q_proj
+base_model.model.model.language_model.layers.28.self_attn.k_proj
+base_model.model.model.language_model.layers.28.self_attn.v_proj
+base_model.model.model.language_model.layers.28.self_attn.o_proj
+base_model.model.model.language_model.layers.29.self_attn.q_proj
+base_model.model.model.language_model.layers.29.self_attn.k_proj
+base_model.model.model.language_model.layers.29.self_attn.v_proj
+base_model.model.model.language_model.layers.29.self_attn.o_proj
+base_model.model.model.language_model.layers.30.self_attn.q_proj
+base_model.model.model.language_model.layers.30.self_attn.k_proj
+base_model.model.model.language_model.layers.30.self_attn.v_proj
+base_model.model.model.language_model.layers.30.self_attn.o_proj
+base_model.model.model.language_model.layers.31.self_attn.q_proj
+base_model.model.model.language_model.layers.31.self_attn.k_proj
+base_model.model.model.language_model.layers.31.self_attn.v_proj
+base_model.model.model.language_model.layers.31.self_attn.o_proj
+base_model.model.model.language_model.layers.32.self_attn.q_proj
+base_model.model.model.language_model.layers.32.self_attn.k_proj
+base_model.model.model.language_model.layers.32.self_attn.v_proj
+base_model.model.model.language_model.layers.32.self_attn.o_proj
+base_model.model.model.language_model.layers.33.self_attn.q_proj
+base_model.model.model.language_model.layers.33.self_attn.k_proj
+base_model.model.model.language_model.layers.33.self_attn.v_proj
+base_model.model.model.language_model.layers.33.self_attn.o_proj
+base_model.model.model.language_model.layers.34.self_attn.q_proj
+base_model.model.model.language_model.layers.34.self_attn.k_proj
+base_model.model.model.language_model.layers.34.self_attn.v_proj
+base_model.model.model.language_model.layers.34.self_attn.o_proj
+base_model.model.model.language_model.layers.35.self_attn.q_proj
+base_model.model.model.language_model.layers.35.self_attn.k_proj
+base_model.model.model.language_model.layers.35.self_attn.v_proj
+base_model.model.model.language_model.layers.35.self_attn.o_proj

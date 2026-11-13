@@ -1,0 +1,53 @@
+seed: 0
+model:
+  id: Qwen/Qwen2.5-VL-3B-Instruct
+  dtype: float16
+  attn_implementation: sdpa
+  min_pixels: 200704
+  max_pixels: 401408
+prompts:
+  fourway: 'Where is the {o1} in relation to the {o2}? Answer with exactly one word:
+    left, right, front, or behind.'
+  vsr: Is the following statement true about the image? "{caption}" Answer yes or
+    no.
+  pope_suffix: ' Answer yes or no.'
+options:
+  fourway:
+  - left
+  - right
+  - front
+  - behind
+  yesno:
+  - 'yes'
+  - 'no'
+paths:
+  drive_root: /content/drive/MyDrive/spatial_probe
+annotations_url: http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+pairs:
+  min_area_frac: 0.02
+  max_pairs_per_image: 3
+  lateral_min_gap: 0.1
+  lateral_max_overlap: 0.3
+images:
+  max_side: 640
+  jpeg_quality: 90
+  workers: 16
+depth:
+  model: depth-anything/Depth-Anything-V2-Small-hf
+  min_mask_pixels: 200
+  min_gap: 0.15
+  larger_is_closer: true
+questions:
+  negative_prob: 0.5
+  val_fraction: 0.05
+  max_train: 12000
+  max_val: 600
+  phrases:
+    left: to the left of
+    right: to the right of
+    front: in front of
+    behind: behind
+  yesno_templates:
+  - Is the {o1} {phrase} the {o2}? Answer yes or no.
+  - Is it true that the {o1} is {phrase} the {o2}? Answer yes or no.
+  - Looking at the image, is the {o1} {phrase} the {o2}? Answer yes or no.
