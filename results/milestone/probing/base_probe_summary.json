@@ -1,0 +1,80 @@
+{
+  "model": "base",
+  "n_layers_probed": 37,
+  "best_layer": {
+    "4way": 23,
+    "lateral": 19,
+    "depth": 21
+  },
+  "best_acc": {
+    "4way": 1.0,
+    "lateral": 1.0,
+    "depth": 1.0
+  },
+  "final_layer_acc": {
+    "4way": 1.0,
+    "lateral": 1.0,
+    "depth": 1.0
+  },
+  "first_layer_acc_ge_0.95": {
+    "4way": 19,
+    "lateral": 19,
+    "depth": 18
+  },
+  "max_fold_std": {
+    "4way": 0.08324195670459142,
+    "lateral": 0.13189057857388178,
+    "depth": 0.08489222191934684
+  },
+  "layers_fold_std_gt_0.10": {
+    "4way": [],
+    "lateral": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "depth": []
+  },
+  "shuffled_control": {
+    "constant_input_layers_excluded": [
+      0
+    ],
+    "max_abs_gap_from_chance_mean_of_5": {
+      "4way": 0.01871428571428574,
+      "lateral": 0.04119047619047633,
+      "depth": 0.02895238095238095
+    },
+    "max_abs_gap_from_chance_single_perm": {
+      "4way": 0.04392857142857143,
+      "lateral": 0.07404761904761903,
+      "depth": 0.09238095238095245
+    },
+    "pass_within_5_points": true,
+    "max_abs_gap_including_constant_layers": {
+      "4way": 0.05154761904761904,
+      "lateral": 0.059095238095238145,
+      "depth": 0.059095238095238145
+    }
+  },
+  "regularization_check_depth": {
+    "0.005": {
+      "pearson_r_vs_C0.05": 0.9900868403460557,
+      "best_layer": 21,
+      "max_abs_diff": 0.05380952380952386
+    },
+    "0.5": {
+      "pearson_r_vs_C0.05": 0.9952356051201898,
+      "best_layer": 21,
+      "max_abs_diff": 0.03428571428571414
+    }
+  },
+  "probe_vs_model": {
+    "final_layer_depth_probe_acc": 1.0,
+    "model_depth_acc": 0.004901960784313725,
+    "final_layer_lateral_probe_acc": 1.0,
+    "model_lateral_acc": 0.9950980392156863
+  },
+  "runtime_s": 455.8
+}

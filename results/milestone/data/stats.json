@@ -1,0 +1,63 @@
+{
+  "sources": [
+    "val2017",
+    "train2017"
+  ],
+  "candidates": 6787,
+  "train": {
+    "questions": 2864,
+    "images": 1356,
+    "by_qtype": {
+      "yesno": 2100,
+      "4way": 764
+    },
+    "by_axis": {
+      "depth": 1432,
+      "lateral": 1432
+    },
+    "4way_by_relation": {
+      "front": 191,
+      "behind": 191,
+      "left": 191,
+      "right": 191
+    },
+    "yesno_by_answer": {
+      "no": 1050,
+      "yes": 1050
+    },
+    "yesno_by_axis_answer": {
+      "depth/no": 525,
+      "depth/yes": 525,
+      "lateral/no": 525,
+      "lateral/yes": 525
+    }
+  },
+  "val": {
+    "questions": 148,
+    "images": 73,
+    "by_qtype": {
+      "yesno": 104,
+      "4way": 44
+    },
+    "by_axis": {
+      "lateral": 74,
+      "depth": 74
+    },
+    "4way_by_relation": {
+      "right": 11,
+      "front": 11,
+      "behind": 11,
+      "left": 11
+    },
+    "yesno_by_answer": {
+      "yes": 52,
+      "no": 52
+    },
+    "yesno_by_axis_answer": {
+      "depth/no": 26,
+      "depth/yes": 26,
+      "lateral/no": 26,
+      "lateral/yes": 26
+    }
+  }
+}
