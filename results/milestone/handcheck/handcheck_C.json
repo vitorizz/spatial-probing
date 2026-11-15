@@ -1,0 +1,403 @@
+{
+  "schema_version": 1,
+  "sample_sha256": "3f64a8555193a89c5d463a0b6f11cd081074a2a7e1fe82509a0d0d0d7e01f30c",
+  "reviewer": "C",
+  "reviews": [
+    {
+      "id": "train_01240",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00261",
+      "verdict": "unsure",
+      "corrected_label": "",
+      "notes": "A little in front, but mainly on top"
+    },
+    {
+      "id": "train_02253",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00097",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01198",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02241",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00516",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01732",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02222",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02531",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01361",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00413",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02187",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01050",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00849",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00297",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02473",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00892",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02221",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00303",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02406",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02631",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01188",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01229",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01811",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01429",
+      "verdict": "unsure",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00367",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01802",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02446",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00745",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01309",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02082",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02342",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01923",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01001",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00170",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01194",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02441",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00748",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00808",
+      "verdict": "unsure",
+      "corrected_label": "",
+      "notes": "Not an oven"
+    },
+    {
+      "id": "train_00778",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01458",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00770",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01935",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00126",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02349",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02514",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00693",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02704",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02740",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01080",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00822",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01941",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00251",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00271",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02756",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00361",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00640",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02788",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00653",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00533",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01401",
+      "verdict": "unsure",
+      "corrected_label": "",
+      "notes": "On top"
+    },
+    {
+      "id": "train_00618",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_02193",
+      "verdict": "accept",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_00143",
+      "verdict": "reject",
+      "corrected_label": "",
+      "notes": ""
+    },
+    {
+      "id": "train_01013",
+      "verdict": "unsure",
+      "corrected_label": "",
+      "notes": ""
+    }
+  ]
+}
