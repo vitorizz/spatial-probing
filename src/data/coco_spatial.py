@@ -316,6 +316,21 @@ def check_depth(split: str, cfg: dict, n: int = 5) -> None:
               f"the {p['a']['name']} is {'in front of' if rel == 'front' else 'behind'} the {p['b']['name']}")
 
 
+def inside_fraction(box: list[float], outer: list[float]) -> float:
+    """Fraction of box's area that lies inside outer (COCO [x, y, w, h])."""
+    ix = max(0.0, min(box[0] + box[2], outer[0] + outer[2]) - max(box[0], outer[0]))
+    iy = max(0.0, min(box[1] + box[3], outer[1] + outer[3]) - max(box[1], outer[1]))
+    return ix * iy / (box[2] * box[3])
+
+
+def rests_on_surface(p: dict, cfg: dict) -> bool:
+    """True if one object sits on a table/bed/couch, where front/behind is not well defined."""
+    for obj, other in ((p["a"], p["b"]), (p["b"], p["a"])):
+        if other["name"] in cfg["rest_surfaces"] and inside_fraction(obj["bbox"], other["bbox"]) >= cfg["rest_min_inside"]:
+            return True
+    return False
+
+
 OPPOSITE = {"left": "right", "right": "left", "front": "behind", "behind": "front"}
 AXIS = {"left": "lateral", "right": "lateral", "front": "depth", "behind": "depth"}
 
@@ -326,6 +341,9 @@ def pair_questions(p: dict, depths: dict, split: str, cfg: dict, rng: random.Ran
     a_depth, b_depth = depths.get(str(p["a"]["ann_id"])), depths.get(str(p["b"]["ann_id"]))
     depth = depth_relation(a_depth, b_depth, cfg["depth"])
     depth_gap = None if a_depth is None or b_depth is None else round(abs(a_depth - b_depth), 4)
+    resting = rests_on_surface(p, cfg["depth"])
+    if resting:
+        depth = None
     relations = [r for r in (p["lateral"], depth) if r is not None]
 
     o1, o2 = p["a"]["name"], p["b"]["name"]
@@ -350,7 +368,8 @@ def pair_questions(p: dict, depths: dict, split: str, cfg: dict, rng: random.Ran
             question = rng.choice(qcfg["yesno_templates"]).format(o1=o1, o2=o2, phrase=qcfg["phrases"][asked_rel])
             out.append({**base, "axis": AXIS[rel], "relation": rel, "qtype": "yesno",
                         "question": question, "answer": answer})
-    if len(relations) == 1:
+    # 4-way needs exactly one clear axis; a resting pair's depth is unclear, not absent.
+    if len(relations) == 1 and not resting:
         rel = relations[0]
         out.append({**base, "axis": AXIS[rel], "relation": rel, "qtype": "4way",
                     "question": cfg["prompts"]["fourway"].format(o1=o1, o2=o2), "answer": rel})
