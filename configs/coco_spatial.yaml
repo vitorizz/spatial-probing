@@ -16,6 +16,9 @@ depth:
   min_mask_pixels: 200
   min_gap: 0.15
   larger_is_closer: true   # to verify with check-depth, then record in NOTES.md
+  # No depth label when an object rests on one of these: its box lies this much inside it.
+  rest_surfaces: [dining table, bed, couch]
+  rest_min_inside: 0.90
 
 questions:
   negative_prob: 0.5
