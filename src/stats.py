@@ -197,14 +197,15 @@ def _metric_values(confusion: np.ndarray, dataset: str, options: list[str]) -> d
 
 def _compare(
     baseline: EvaluationRun, adapter: EvaluationRun, *, n_bootstrap: int,
-    confidence: float, seed: int | None, allow_limited: bool,
+    confidence: float, seed: int | None, allow_limited: bool, adapter_baseline: bool = False,
 ) -> dict[str, Any]:
     before, after = baseline.metadata, adapter.metadata
     for field in ("dataset", "variant", "split", "annotations_sha256"):
         if before.get(field) != after.get(field):
             raise ValueError(f"cannot compare different {field} values")
-    if before["adapter"] is not None or after["adapter"] is None:
-        raise ValueError("comparison requires a base run followed by an adapter run")
+    if after["adapter"] is None or (before["adapter"] is not None) != adapter_baseline:
+        raise ValueError("comparison requires a base run followed by an adapter run "
+                         "(or two adapter runs with adapter_baseline)")
     if baseline.options != adapter.options:
         raise ValueError("answer options or their order differ between runs")
     for field in ("model", "seed"):
@@ -291,14 +292,17 @@ def _compare(
 def compare_runs(
     baseline: str | Path, adapter: str | Path, *, n_bootstrap: int = 2000,
     confidence: float = 0.95, seed: int | None = None, allow_limited: bool = False,
+    adapter_baseline: bool = False,
 ) -> dict[str, Any]:
     """Match question IDs and estimate adapter-minus-baseline metric differences.
 
     Images are the resampling units for VSR/POPE; object-pair groups for What'sUp.
     Intervals are null with fewer than two groups contributing to a metric.
+    With adapter_baseline, the baseline is another adapter run (e.g. random vs targeted).
     """
     return _compare(load_run(baseline), load_run(adapter), n_bootstrap=n_bootstrap,
-                    confidence=confidence, seed=seed, allow_limited=allow_limited)
+                    confidence=confidence, seed=seed, allow_limited=allow_limited,
+                    adapter_baseline=adapter_baseline)
 
 
 def write_report(comparisons: list[dict[str, Any]], out: str | Path, *, overwrite: bool = False) -> None:
@@ -309,8 +313,10 @@ def write_report(comparisons: list[dict[str, Any]], out: str | Path, *, overwrit
     paths = [out / f"comparison.{suffix}" for suffix in ("json", "csv", "md")]
     if not overwrite and any(path.exists() for path in paths):
         raise FileExistsError(f"comparison outputs already exist in {out}; choose another --out or --overwrite")
+    models = {side: ", ".join(sorted({c[side]["model"] for c in comparisons})) for side in ("baseline", "adapter")}
     rows, lines = [], [
         "# Baseline / adapter comparison", "",
+        f"Baseline: {models['baseline']}. Adapter: {models['adapter']}.", "",
         "Rates are percentages; changes and confidence intervals are percentage points (adapter minus baseline).", "",
         "| Dataset | Metric | N | Groups | Baseline (%) | Adapter (%) | Change (pp) | CI for change (pp) |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -357,6 +363,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--confidence", type=float, default=0.95, help="interval coverage (default: 0.95)")
     parser.add_argument("--seed", type=int, help="bootstrap seed (default: each baseline's evaluation seed)")
     parser.add_argument("--allow-limited", action="store_true", help="explicitly allow and label smoke-run comparisons")
+    parser.add_argument("--adapter-baseline", action="store_true",
+                        help="the --baseline files are another adapter's runs (e.g. random vs targeted)")
     parser.add_argument("--overwrite", action="store_true", help="replace existing report files")
     args = parser.parse_args(argv)
     try:
@@ -375,7 +383,7 @@ def main(argv: list[str] | None = None) -> None:
             raise ValueError("baseline and adapter files must cover the same dataset/variant/split sets")
         comparisons = [
             _compare(run, adapter[key], n_bootstrap=args.bootstrap, confidence=args.confidence,
-                     seed=args.seed, allow_limited=args.allow_limited)
+                     seed=args.seed, allow_limited=args.allow_limited, adapter_baseline=args.adapter_baseline)
             for key, run in baseline.items()
         ]
         out = args.out or results_dir() / "comparisons"
