@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "comparisons": [
+    {
+      "dataset": "whatsup",
+      "variant": null,
+      "split": null,
+      "baseline": {
+        "metrics_file": "results\\evaluation_milestone_vision_fp32\\metrics\\base_whatsup.json",
+        "model": "base",
+        "predictions_sha256": "4df5ab21a3084812ada14d3030b43b25f5cd551785d20d84fbf188a6945151a8"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_whatsup.json",
+        "model": "lora_targeted",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_targeted/adapter",
+        "predictions_sha256": "da4b84633592e410148c39ae85b378ddc71e41b7c2fcec1850252580b3e6b527"
+      },
+      "limited": false,
+      "n": 408,
+      "n_groups": 102,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 408,
+          "n_groups": 102,
+          "baseline": 0.5,
+          "adapter": 0.9338235294117647,
+          "delta": 0.4338235294117647,
+          "ci_low": 0.4117647058823529,
+          "ci_high": 0.4558823529411765,
+          "n_bootstrap_valid": 2000
+        },
+        "lateral_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 0.9950980392156863,
+          "adapter": 1.0,
+          "delta": 0.004901960784313708,
+          "ci_low": 0.0,
+          "ci_high": 0.014705882352941124,
+          "n_bootstrap_valid": 2000
+        },
+        "depth_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 0.004901960784313725,
+          "adapter": 0.8676470588235294,
+          "delta": 0.8627450980392157,
+          "ci_low": 0.8186274509803921,
+          "ci_high": 0.9068627450980392,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "vsr",
+      "variant": "zeroshot",
+      "split": "test",
+      "baseline": {
+        "metrics_file": "results\\evaluation_milestone_vision_fp32\\metrics\\base_vsr_zeroshot_test.json",
+        "model": "base",
+        "predictions_sha256": "b5d8d2d1884005683a3521f2c5eac1c73929279bbe1b2edc5168fb7fee4b7890"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_vsr_zeroshot_test.json",
+        "model": "lora_targeted",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_targeted/adapter",
+        "predictions_sha256": "5a13709c221c8ddea9e5b5ff9b8023161f85a1b1ab183227ca15a7bdc72eac24"
+      },
+      "limited": false,
+      "n": 1222,
+      "n_groups": 715,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 1222,
+          "n_groups": 715,
+          "baseline": 0.8183306055646481,
+          "adapter": 0.820785597381342,
+          "delta": 0.002454991816693952,
+          "ci_low": -0.01606882444481416,
+          "ci_high": 0.019625263898662974,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "pope",
+      "variant": "random",
+      "split": null,
+      "baseline": {
+        "metrics_file": "results\\evaluation_milestone_vision_fp32\\metrics\\base_pope_random.json",
+        "model": "base",
+        "predictions_sha256": "696e29c9e9b779c01a5e888c95000593c8cf609863f5486c223fe427f01e1a35"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_pope_random.json",
+        "model": "lora_targeted",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_targeted/adapter",
+        "predictions_sha256": "7d3b9c8016ceaf32bc7b36cff15e311e3746f9acef3a88efc5d765db5d75f235"
+      },
+      "limited": false,
+      "n": 3000,
+      "n_groups": 500,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.8826666666666667,
+          "adapter": 0.9096666666666666,
+          "delta": 0.026999999999999913,
+          "ci_low": 0.020000000000000018,
+          "ci_high": 0.03366666666666662,
+          "n_bootstrap_valid": 2000
+        },
+        "precision": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.9880952380952381,
+          "adapter": 0.9789555728760717,
+          "delta": -0.009139665219166426,
+          "ci_low": -0.014826051229906722,
+          "ci_high": -0.00419157990365792,
+          "n_bootstrap_valid": 2000
+        },
+        "recall": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.7746666666666666,
+          "adapter": 0.8373333333333334,
+          "delta": 0.06266666666666676,
+          "ci_low": 0.050000000000000044,
+          "ci_high": 0.07466666666666666,
+          "n_bootstrap_valid": 2000
+        },
+        "f1": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.8684603886397608,
+          "adapter": 0.9026230686309737,
+          "delta": 0.03416267999121292,
+          "ci_low": 0.02595618623007897,
+          "ci_high": 0.042371234947640064,
+          "n_bootstrap_valid": 2000
+        },
+        "yes_ratio": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.392,
+          "adapter": 0.42766666666666664,
+          "delta": 0.035666666666666624,
+          "ci_low": 0.029333333333333322,
+          "ci_high": 0.04199999999999998,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    }
+  ]
+}
