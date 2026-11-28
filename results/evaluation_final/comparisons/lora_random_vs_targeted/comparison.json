@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "comparisons": [
+    {
+      "dataset": "whatsup",
+      "variant": null,
+      "split": null,
+      "baseline": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_whatsup.json",
+        "model": "lora_targeted",
+        "predictions_sha256": "da4b84633592e410148c39ae85b378ddc71e41b7c2fcec1850252580b3e6b527"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_random_whatsup.json",
+        "model": "lora_random",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_random/adapter",
+        "predictions_sha256": "83cb02968adf271ff54265e3e4698eb673a50661cab76082dc01bb311e74927f"
+      },
+      "limited": false,
+      "n": 408,
+      "n_groups": 102,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 408,
+          "n_groups": 102,
+          "baseline": 0.9338235294117647,
+          "adapter": 1.0,
+          "delta": 0.06617647058823528,
+          "ci_low": 0.044117647058823484,
+          "ci_high": 0.08829656862745067,
+          "n_bootstrap_valid": 2000
+        },
+        "lateral_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 1.0,
+          "adapter": 1.0,
+          "delta": 0.0,
+          "ci_low": 0.0,
+          "ci_high": 0.0,
+          "n_bootstrap_valid": 2000
+        },
+        "depth_accuracy": {
+          "n": 204,
+          "n_groups": 102,
+          "baseline": 0.8676470588235294,
+          "adapter": 1.0,
+          "delta": 0.13235294117647056,
+          "ci_low": 0.08823529411764708,
+          "ci_high": 0.17659313725490133,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "vsr",
+      "variant": "zeroshot",
+      "split": "test",
+      "baseline": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_vsr_zeroshot_test.json",
+        "model": "lora_targeted",
+        "predictions_sha256": "5a13709c221c8ddea9e5b5ff9b8023161f85a1b1ab183227ca15a7bdc72eac24"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_random_vsr_zeroshot_test.json",
+        "model": "lora_random",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_random/adapter",
+        "predictions_sha256": "b9b203c807bfab7624c6c5ac4555df1ed9ef9c67c2f7c881997bfe28935c66e6"
+      },
+      "limited": false,
+      "n": 1222,
+      "n_groups": 715,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 1222,
+          "n_groups": 715,
+          "baseline": 0.820785597381342,
+          "adapter": 0.823240589198036,
+          "delta": 0.002454991816693952,
+          "ci_low": -0.01255246546639252,
+          "ci_high": 0.017068906141944708,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    },
+    {
+      "dataset": "pope",
+      "variant": "random",
+      "split": null,
+      "baseline": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_targeted_pope_random.json",
+        "model": "lora_targeted",
+        "predictions_sha256": "7d3b9c8016ceaf32bc7b36cff15e311e3746f9acef3a88efc5d765db5d75f235"
+      },
+      "adapter": {
+        "metrics_file": "results\\evaluation_final\\metrics\\lora_random_pope_random.json",
+        "model": "lora_random",
+        "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_random/adapter",
+        "predictions_sha256": "11b75993e465ac423e652b25e33917cba0c4b7e350b27814430bb1c115376bdf"
+      },
+      "limited": false,
+      "n": 3000,
+      "n_groups": 500,
+      "method": "paired_cluster_percentile_bootstrap",
+      "n_bootstrap": 2000,
+      "confidence": 0.95,
+      "seed": 0,
+      "metrics": {
+        "accuracy": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.9096666666666666,
+          "adapter": 0.8986666666666666,
+          "delta": -0.01100000000000001,
+          "ci_low": -0.016000000000000014,
+          "ci_high": -0.006325000000000015,
+          "n_bootstrap_valid": 2000
+        },
+        "precision": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.9789555728760717,
+          "adapter": 0.9822580645161291,
+          "delta": 0.003302491640057359,
+          "ci_low": 0.00030765362327066513,
+          "ci_high": 0.007040609760277675,
+          "n_bootstrap_valid": 2000
+        },
+        "recall": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.8373333333333334,
+          "adapter": 0.812,
+          "delta": -0.02533333333333332,
+          "ci_low": -0.03533333333333333,
+          "ci_high": -0.016000000000000014,
+          "n_bootstrap_valid": 2000
+        },
+        "f1": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.9026230686309737,
+          "adapter": 0.8890510948905109,
+          "delta": -0.013571973740462817,
+          "ci_low": -0.01962966621454759,
+          "ci_high": -0.007822190988749644,
+          "n_bootstrap_valid": 2000
+        },
+        "yes_ratio": {
+          "n": 3000,
+          "n_groups": 500,
+          "baseline": 0.42766666666666664,
+          "adapter": 0.41333333333333333,
+          "delta": -0.014333333333333309,
+          "ci_low": -0.019333333333333313,
+          "ci_high": -0.009333333333333305,
+          "n_bootstrap_valid": 2000
+        }
+      },
+      "environment_differences": {}
+    }
+  ]
+}

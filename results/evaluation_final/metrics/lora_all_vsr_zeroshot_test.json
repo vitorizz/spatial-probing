@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "model": "lora_all",
+  "dataset": "vsr",
+  "variant": "zeroshot",
+  "split": "test",
+  "adapter": "/content/drive/MyDrive/spatial_probe/runs/lora_all/adapter",
+  "n": 1222,
+  "accuracy": 0.8044189852700491,
+  "per_class_accuracy": {
+    "yes": 0.9141494435612083,
+    "no": 0.688026981450253
+  },
+  "pred_counts": {
+    "yes": 760,
+    "no": 462
+  },
+  "confusion": {
+    "labels": [
+      "yes",
+      "no"
+    ],
+    "rows_true_cols_pred": [
+      [
+        575,
+        54
+      ],
+      [
+        185,
+        408
+      ]
+    ]
+  },
+  "per_relation_accuracy": {
+    "above": 0.8709677419354839,
+    "across from": 0.75,
+    "adjacent to": 0.5,
+    "ahead of": 1.0,
+    "alongside": 0.5,
+    "around": 0.0,
+    "at the back of": 0.6666666666666666,
+    "at the edge of": 0.8,
+    "at the left side of": 0.7931034482758621,
+    "at the right side of": 0.8571428571428571,
+    "at the side of": 0.75,
+    "attached to": 1.0,
+    "away from": 0.9375,
+    "behind": 0.8108108108108109,
+    "below": 0.84,
+    "beneath": 0.8490566037735849,
+    "beside": 0.896551724137931,
+    "between": 0.5,
+    "by": 0.6923076923076923,
+    "close to": 1.0,
+    "consists of": 1.0,
+    "contains": 0.8461538461538461,
+    "detached from": 0.6666666666666666,
+    "down from": 0.0,
+    "enclosed by": 0.75,
+    "facing": 0.5714285714285714,
+    "facing away from": 0.30434782608695654,
+    "far away from": 0.8,
+    "far from": 1.0,
+    "has as a part": 1.0,
+    "in": 0.8734177215189873,
+    "in front of": 0.8611111111111112,
+    "in the middle of": 0.25,
+    "inside": 0.7543859649122807,
+    "into": 0.8,
+    "left of": 0.8888888888888888,
+    "near": 0.5,
+    "next to": 0.8181818181818182,
+    "off": 1.0,
+    "on": 0.8636363636363636,
+    "on top of": 0.7528089887640449,
+    "opposite to": 1.0,
+    "outside": 0.5,
+    "over": 0.9285714285714286,
+    "parallel to": 0.3333333333333333,
+    "part of": 1.0,
+    "perpendicular to": 0.6666666666666666,
+    "right of": 0.875,
+    "surrounding": 0.6666666666666666,
+    "touching": 0.8314606741573034,
+    "toward": 0.5,
+    "under": 0.8411214953271028,
+    "within": 0.8
+  },
+  "n_available": 1222,
+  "limit": null,
+  "complete_dataset": true,
+  "manifest_sha256": "665572a5f2278b4ea77e6a65fd5efad8d62a335d2f356c6d7003a6001b5fa01d",
+  "annotations": "/content/spatial-evaluation-n1v3j5_9/data/vsr/zeroshot/test.jsonl",
+  "annotations_sha256": "914d9156723b912d8f794b179248af865a68c5f81c9d8e3a21d007778cacaad4",
+  "timestamp_utc": "2026-11-25T15:07:03.173249+00:00",
+  "runtime": {
+    "load_s": 44.005,
+    "main_pass_s": 1180.082
+  },
+  "env": {
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "transformers": "5.22.1",
+    "peft": "0.21.2",
+    "Pillow": "11.3.0",
+    "numpy": "2.4.6",
+    "PyYAML": "6.0.3",
+    "device": "cuda:0",
+    "dtype": "torch.float16",
+    "vision_dtype": "torch.float32",
+    "language_dtype": "torch.float16"
+  },
+  "code": {
+    "revision": null,
+    "tracked_changes": null
+  },
+  "config": {
+    "seed": 0,
+    "model": {
+      "id": "Qwen/Qwen2.5-VL-3B-Instruct",
+      "dtype": "float16",
+      "attn_implementation": "sdpa",
+      "min_pixels": 200704,
+      "max_pixels": 401408,
+      "vision_dtype": "float32"
+    },
+    "prompts": {
+      "fourway": "Where is the {o1} in relation to the {o2}? Answer with exactly one word: left, right, front, or behind.",
+      "vsr": "Is the following statement true about the image? \"{caption}\" Answer yes or no.",
+      "pope_suffix": " Answer yes or no."
+    },
+    "options": {
+      "fourway": [
+        "left",
+        "right",
+        "front",
+        "behind"
+      ],
+      "yesno": [
+        "yes",
+        "no"
+      ]
+    },
+    "paths": {
+      "drive_root": "/content/drive/MyDrive/spatial_probe"
+    }
+  },
+  "predictions_file": "preds/lora_all_vsr_zeroshot_test.csv",
+  "predictions_sha256": "570b18818e0910be78a6a5760ededd9cde7d01588a912824fc3377f86a379ec1"
+}

@@ -192,6 +192,18 @@ class ComparisonTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "base run followed by an adapter"):
             self.compare()
 
+    def test_two_adapter_runs_need_adapter_baseline(self):
+        self.change_metadata(self.base, adapter="runs/random/adapter", model="random")
+        with self.assertRaisesRegex(ValueError, "base run followed by an adapter"):
+            self.compare()
+        result = self.compare(adapter_baseline=True)
+        self.assertEqual(result["metrics"]["accuracy"]["delta"], 0.5)
+        write_report([result], self.root / "report")
+        self.assertIn("Baseline: random. Adapter: targeted.", (self.root / "report/comparison.md").read_text())
+        self.change_metadata(self.base, adapter=None)
+        with self.assertRaisesRegex(ValueError, "base run followed by an adapter"):
+            self.compare(adapter_baseline=True)
+
     def test_limited_runs_require_opt_in_and_are_labeled(self):
         for path in (self.base, self.adapted):
             self.change_metadata(path, limit=20)
