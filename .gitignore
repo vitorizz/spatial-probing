@@ -16,6 +16,11 @@ results/hidden/
 *.tar.gz
 *.zip
 
+# The final report text stays local for now. Its figures and the script that builds them are tracked.
+/report/*
+!/report/make_figures.py
+!/report/figures/
+
 __pycache__/
 *.py[cod]
 *.egg-info/
